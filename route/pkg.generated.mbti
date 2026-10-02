@@ -1,0 +1,35 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "eisem/moonnetlink/route"
+
+import {
+  "eisem/moonnetlink/core",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn decode_link(@core.NetlinkMessage) -> Link raise @core.CodecError
+
+pub fn decode_links(ArrayView[@core.NetlinkMessage]) -> Array[Link] raise @core.CodecError
+
+pub fn encode_get_links(UInt) -> Bytes
+
+pub let rtm_getlink : UInt16
+
+pub let rtm_newlink : UInt16
+
+// Errors
+
+// Types and methods
+pub(all) struct Link {
+  index : Int
+  name : String?
+  flags : UInt
+  unknown_attributes : Array[@core.NetlinkAttribute]
+} derive(Eq, @debug.Debug)
+pub fn Link::equal(Self, Self) -> Bool
+pub fn Link::not_equal(Self, Self) -> Bool
+pub fn Link::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

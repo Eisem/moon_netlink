@@ -1,0 +1,12 @@
+import {
+  "eisem/moonnetlink/core",
+  "moonbitlang/async/raw_fd",
+  "moonbitlang/async/os_error",
+  "moonbitlang/async/types",
+}
+
+supported_targets = "native"
+
+options(
+  "native-stub": [ "netlink_linux.c" ],
+)

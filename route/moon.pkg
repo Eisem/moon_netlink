@@ -1,0 +1,6 @@
+import {
+  "eisem/moonnetlink/core",
+  "moonbitlang/core/encoding/utf8",
+}
+
+supported_targets = "native"

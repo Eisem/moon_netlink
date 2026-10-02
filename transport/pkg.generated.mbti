@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "eisem/moonnetlink/transport"
+
+import {
+  "eisem/moonnetlink/core",
+  "moonbitlang/async/raw_fd",
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+pub(all) suberror TransportError {
+  UnsupportedPlatform
+  OpenFailed(errno~ : Int)
+  ReadClosed
+  ShortWrite(expected~ : Int, actual~ : Int)
+  KernelRejected(errno~ : Int)
+  UnexpectedControl(message_type~ : UInt16)
+} derive(Eq, @debug.Debug)
+pub fn TransportError::equal(Self, Self) -> Bool
+pub fn TransportError::not_equal(Self, Self) -> Bool
+pub fn TransportError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub struct RouteSocket {
+  source : @raw_fd.RawFd
+  mut closed : Bool
+}
+pub fn RouteSocket::close(Self) -> Unit
+pub async fn RouteSocket::open(groups? : UInt) -> Self
+pub async fn RouteSocket::request_dump(Self, Bytes, UInt) -> Array[@core.NetlinkMessage]
+
+// Type aliases
+
+// Traits

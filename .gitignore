@@ -1,0 +1,8 @@
+/target/
+/_build/
+/.mooncakes/
+*.o
+*.a
+*.exe
+/MoonBit 黑客松大赛章程/
+

@@ -1,0 +1,78 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "eisem/moonnetlink/core"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn align4(Int) -> Int
+
+pub fn decode_attributes(BytesView, Int) -> Array[NetlinkAttribute] raise CodecError
+
+pub fn decode_datagram(BytesView) -> Array[NetlinkMessage] raise CodecError
+
+pub let nla_header_length : Int
+
+pub let nlmsg_done : UInt16
+
+pub let nlmsg_error : UInt16
+
+pub let nlmsg_header_length : Int
+
+pub let nlmsg_noop : UInt16
+
+pub let nlmsg_overrun : UInt16
+
+pub fn read_i32_le(BytesView, Int) -> Int raise CodecError
+
+pub fn read_u16_le(BytesView, Int) -> UInt16 raise CodecError
+
+pub fn read_u32_le(BytesView, Int) -> UInt raise CodecError
+
+pub fn write_u16_le(FixedArray[Byte], Int, UInt16) -> Unit
+
+pub fn write_u32_le(FixedArray[Byte], Int, UInt) -> Unit
+
+// Errors
+pub(all) suberror CodecError {
+  InvalidOffset(context~ : String, offset~ : Int)
+  Truncated(context~ : String, offset~ : Int, needed~ : Int, available~ : Int)
+  InvalidLength(context~ : String, length~ : UInt, minimum~ : Int)
+  LengthTooLarge(context~ : String, length~ : UInt)
+} derive(Eq, @debug.Debug)
+pub fn CodecError::equal(Self, Self) -> Bool
+pub fn CodecError::not_equal(Self, Self) -> Bool
+pub fn CodecError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) struct NetlinkAttribute {
+  attribute_type : UInt16
+  payload : Bytes
+} derive(Eq, @debug.Debug)
+pub fn NetlinkAttribute::equal(Self, Self) -> Bool
+pub fn NetlinkAttribute::not_equal(Self, Self) -> Bool
+pub fn NetlinkAttribute::to_repr(Self) -> @debug.Repr
+
+pub(all) struct NetlinkHeader {
+  length : UInt
+  message_type : UInt16
+  flags : UInt16
+  sequence : UInt
+  port_id : UInt
+} derive(Eq, @debug.Debug)
+pub fn NetlinkHeader::equal(Self, Self) -> Bool
+pub fn NetlinkHeader::not_equal(Self, Self) -> Bool
+pub fn NetlinkHeader::to_repr(Self) -> @debug.Repr
+
+pub(all) struct NetlinkMessage {
+  header : NetlinkHeader
+  payload : Bytes
+} derive(Eq, @debug.Debug)
+pub fn NetlinkMessage::equal(Self, Self) -> Bool
+pub fn NetlinkMessage::not_equal(Self, Self) -> Bool
+pub fn NetlinkMessage::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits
