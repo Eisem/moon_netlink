@@ -5,6 +5,11 @@ import {
   "moonbitlang/async/types",
 }
 
+import {
+  "eisem/moonnetlink/route",
+  "moonbitlang/async",
+} for "wbtest"
+
 supported_targets = "native"
 
 options(

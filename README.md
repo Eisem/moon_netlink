@@ -11,6 +11,9 @@ loopback interface without invoking the `ip` command.
 See [TODO.md](./TODO.md) for the project goals, architecture, safety model,
 scope, milestones, and acceptance criteria.
 
+The native descriptor ownership and fail-closed datagram policy are documented
+in [docs/transport.md](./docs/transport.md).
+
 ## Current probe
 
 On Linux with MoonBit and a C compiler:

@@ -488,13 +488,13 @@ MVP 不使用一个复杂后台 pump 同时处理请求和事件，而采用两�
 
 `RawFd::read` 的具体缓冲、取消和 datagram 截断行为必须通过当前版本文档和探针确认，不能凭印象实现。
 
-- [ ] 确认 `RawFd` 构造、read、write、close 的准确签名和所有权；
+- [x] 确认 `RawFd` 构造、read、write、close 的准确签名和所有权；
 - [ ] 确认取消/超时后 fd 是否仍可安全复用；
-- [ ] 验证 connected Netlink socket 能否通过 RawFd 完整 write/read；
-- [ ] 验证一次 read 的 datagram 边界行为；
-- [ ] 选择安全的初始缓冲策略，并能识别可能的截断；
-- [ ] 如果 RawFd 无法可靠检测 `MSG_TRUNC`，评估最小 `recvmsg` shim 或足够大缓冲与显式限制；
-- [ ] 明确写入不完整时的错误行为，绝不把一条消息拆成多个 datagram。
+- [x] 验证 connected Netlink socket 能否通过 RawFd 完整 write/read；
+- [x] 验证一次 read 的 datagram 边界行为；
+- [x] 选择安全的初始缓冲策略，并能识别可能的截断；
+- [x] RawFd 无法报告 `MSG_TRUNC`：首版采用 256 KiB 可配置缓冲，读满即以 `DatagramMayBeTruncated` 安全失败；契约见 `docs/transport.md`；
+- [x] 明确写入不完整时的错误行为：一次 write，不完整则 `ShortWrite`，绝不拆成多个 datagram。
 
 ---
 
@@ -860,7 +860,7 @@ moon test state
 - [x] 通过 `RawFd` 写入请求并读取响应；
 - [x] 解析 header，找到 loopback `lo`；
 - [x] 输出 message type、interface index/name/flags，并验证请求 sequence；
-- [ ] 记录 datagram 读取、缓冲和关闭语义；
+- [x] 在 `docs/transport.md` 记录 datagram 读取、缓冲、所有权和关闭语义；
 - [x] 将探针保留在 `examples/inspect_links`，而不是丢弃。
 
 已验证命令：
@@ -1075,7 +1075,7 @@ API 设计要求：
 
 | 风险 | 影响 | 应对 |
 |---|---|---|
-| RawFd 对 datagram 截断检测不足 | dump 数据丢失或解析错误 | Phase 0 实测；必要时增加最小 recvmsg shim |
+| RawFd 不暴露 `MSG_TRUNC` | 固定缓冲过小时内核会丢弃 datagram 尾部 | 默认 256 KiB 可配置缓冲；读满即 `DatagramMayBeTruncated`，不解析；契约见 `docs/transport.md` |
 | multipart/sequence 处理错误 | 查询混入事件或提前结束 | client/monitor 分 socket；fixture + E2E |
 | 内核版本属性差异 | 新系统解析失败 | 保留 unknown attributes；严格已知字段长度，宽容未知字段 |
 | mutation 误伤宿主网络 | 高风险 | 默认 dry-run、namespace、关键资源保护、显式 `--yes` |

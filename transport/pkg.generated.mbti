@@ -13,7 +13,9 @@ import {
 pub(all) suberror TransportError {
   UnsupportedPlatform
   OpenFailed(errno~ : Int)
+  InvalidReceiveCapacity(size~ : Int, minimum~ : Int)
   ReadClosed
+  DatagramMayBeTruncated(capacity~ : Int)
   ShortWrite(expected~ : Int, actual~ : Int)
   KernelRejected(errno~ : Int)
   UnexpectedControl(message_type~ : UInt16)
@@ -25,10 +27,11 @@ pub fn TransportError::to_repr(Self) -> @debug.Repr
 // Types and methods
 pub struct RouteSocket {
   source : @raw_fd.RawFd
+  receive_capacity : Int
   mut closed : Bool
 }
 pub fn RouteSocket::close(Self) -> Unit
-pub async fn RouteSocket::open(groups? : UInt) -> Self
+pub async fn RouteSocket::open(groups? : UInt, receive_capacity? : Int) -> Self
 pub async fn RouteSocket::request_dump(Self, Bytes, UInt) -> Array[@core.NetlinkMessage]
 
 // Type aliases
