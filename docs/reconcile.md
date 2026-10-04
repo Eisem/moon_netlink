@@ -15,4 +15,13 @@ kernel write. Acknowledgement does not prove that desired state was achieved.
 
 Mutations are shielded from caller cancellation until their bounded SDK request
 finishes; cancellation between steps stops execution. Custom backends must bound
-their own operations. The current API has no rollback or final verification yet.
+their own operations. On failure or cancellation, completed operations are
+compensated in reverse order under cancellation protection. Compensation errors
+are recorded without hiding the original error or stopping later compensations.
+Unobserved previous MTU is explicitly unavailable. An unacknowledged failed
+operation is never blindly compensated because its outcome may be unknown.
+
+Compensation restores supported managed fields/identities, not arbitrary kernel
+metadata, address lifetimes or implicit connected-route effects. Independent
+writers can make compensation fail. This is best-effort recovery, not an atomic
+transaction; final desired-state verification is still a separate task.

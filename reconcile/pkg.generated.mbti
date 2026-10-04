@@ -19,9 +19,22 @@ pub struct ApplyReport {
   not_executed : Array[Int]
   dry_run : Bool
   cancelled : Bool
+  rollback : Array[RollbackResult]
 }
 pub fn ApplyReport::completed_without_error(Self) -> Bool
 pub fn ApplyReport::to_json(Self) -> Json
+
+pub(all) enum CompensationStatus {
+  Completed
+  Failed(Error)
+  Unavailable(String)
+}
+
+pub struct RollbackResult {
+  index : Int
+  change : @state.Change?
+  status : CompensationStatus
+}
 
 pub struct RouteBackend {
   client : @transport.RouteClient

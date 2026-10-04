@@ -14,6 +14,7 @@ pub struct ApplyReport {
   not_executed : Array[Int]
   dry_run : Bool
   cancelled : Bool
+  rollback : Array[RollbackResult]
 }
 
 ///|
@@ -71,6 +72,33 @@ pub fn ApplyReport::to_json(self : ApplyReport) -> Json {
     "not_executed": @json.to_json(self.not_executed),
     "dry_run": Json::boolean(self.dry_run),
     "cancelled": Json::boolean(self.cancelled),
+    "rollback": Json::array(
+      [
+        for item in self.rollback => {
+          {
+            "index": @json.to_json(item.index),
+            "change": item.change
+            .map(change => change.to_json())
+            .unwrap_or(Json::null()),
+            "status": Json::string(
+              match item.status {
+                Completed => "completed"
+                Failed(_) => "failed"
+                Unavailable(_) => "unavailable"
+              },
+            ),
+            "error": match item.status {
+              Failed(error) => error_json(error)
+              _ => Json::null()
+            },
+            "reason": match item.status {
+              Unavailable(reason) => Json::string(reason)
+              _ => Json::null()
+            },
+          }
+        }
+      ],
+    ),
     "execution_completed": Json::boolean(self.completed_without_error()),
   }
 }

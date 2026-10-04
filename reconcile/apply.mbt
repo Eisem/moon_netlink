@@ -37,6 +37,13 @@ pub async fn apply_plan(
     is None
   }
   let attempted = completed.length() + (if failed is Some(_) { 1 } else { 0 })
+  let rollback = if !dry_run && (failed is Some(_) || cancelled) {
+    @async.protect_from_cancel(() => {
+      rollback_completed(backend, plan, completed)
+    })
+  } else {
+    []
+  }
   {
     plan,
     completed,
@@ -46,5 +53,6 @@ pub async fn apply_plan(
     ],
     dry_run,
     cancelled,
+    rollback,
   }
 }

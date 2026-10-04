@@ -114,7 +114,7 @@ async test "cancellation accounts for in-flight ACK and stops remaining operatio
       assert_true(report.cancelled)
       assert_eq(report.completed, [0])
       assert_eq(report.not_executed, [1, 2])
-      assert_eq(delayed.calls.length(), 1)
+      assert_eq(delayed.calls.length(), 2)
       assert_false(report.completed_without_error())
     })
   })
@@ -136,7 +136,7 @@ async test "executor orders operations and stops with typed partial failure" {
   let report = @reconcile.apply_plan(network, plan, dry_run=false)
   assert_eq(report.completed, [0])
   assert_eq(report.not_executed, [2])
-  assert_eq(network.calls.length(), 2)
+  assert_eq(network.calls.length(), 3)
   assert_true(network.calls[0] is SetMtu(..))
   assert_true(network.calls[1] is SetLinkUp(..))
   guard report.failed is Some(failure) else { fail("missing failure") }
