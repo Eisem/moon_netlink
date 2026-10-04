@@ -36,3 +36,11 @@ Dry-run has no final verification. The lower-level `apply_plan` reports ACKs
 only, so its `succeeded()` is always false without a desired-state verification.
 A verification error alone does not blindly compensate already acknowledged
 changes; the report exposes the uncertainty for caller recovery.
+
+`bash .ci/validate-idempotence.sh` applies MTU/UP, IPv4/IPv6 addresses and
+nondefault routes in a disposable namespace, compares queries with `ip -j`,
+then requires an empty second plan and no-op second apply. Explicit deletion
+also converges, while undeclared addresses and routes remain present.
+Unmanaged-route comparison retains every field and flag except `linkdown`:
+changing one veth endpoint's UP state changes peer carrier, so this marker is
+expected to change while the peer's configured route remains unchanged.
