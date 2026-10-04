@@ -55,3 +55,12 @@ rejected; `up=false` requests disabling an existing link. Existing point-to-poin
 addresses, mismatched scope/protocol or unsupported route features fail instead
 of constructing a mutation that cannot reproduce their semantics. Migration
 of unsupported properties requires a future explicit API, not implicit deletion.
+
+`diff(snapshot, desired)` returns supported typed `Change` values after complete
+preflight. Link changes retain before/after values; Address/Route changes carry
+exact SDK specs and resolved indices. Satisfied fields produce no change.
+Unmanaged resources never generate deletions. Competing route slots or local
+addresses reject exclusive adds unless the old identity is explicitly absent.
+Two present route intents for one kernel slot conflict, even with different
+gateways/interfaces. An explicit delete/add migration is permitted. Diff order
+is deterministic but dependency ordering belongs to `Plan`; no I/O is performed.

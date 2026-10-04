@@ -11,6 +11,8 @@ pub fn address_identity(DesiredAddress) -> String
 
 pub fn desired_priority(DesiredRoute) -> UInt
 
+pub fn diff(NetworkSnapshot, DesiredState) -> Diff raise
+
 pub fn evaluate_intent(NetworkSnapshot, DesiredState) -> Array[IntentStatus] raise
 
 pub fn normalize(NetworkSnapshot) -> NetworkSnapshot
@@ -36,6 +38,18 @@ pub fn StateError::not_equal(Self, Self) -> Bool
 pub fn StateError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub(all) enum Change {
+  SetLinkUp(name~ : String, index~ : Int, before~ : Bool, after~ : Bool)
+  SetMtu(name~ : String, index~ : Int, before~ : UInt?, after~ : UInt)
+  AddAddress(name~ : String, spec~ : @route.AddressSpec)
+  DeleteAddress(name~ : String, spec~ : @route.AddressSpec)
+  AddRoute(name~ : String, spec~ : @route.RouteSpec)
+  DeleteRoute(name~ : String, spec~ : @route.RouteSpec)
+} derive(Eq, @debug.Debug)
+pub fn Change::equal(Self, Self) -> Bool
+pub fn Change::not_equal(Self, Self) -> Bool
+pub fn Change::to_repr(Self) -> @debug.Repr
+
 pub(all) struct DesiredAddress {
   interface : String
   ensure : Ensure
@@ -81,6 +95,13 @@ pub fn DesiredState::equal(Self, Self) -> Bool
 pub fn DesiredState::not_equal(Self, Self) -> Bool
 pub fn DesiredState::parse(String) -> Self raise
 pub fn DesiredState::to_repr(Self) -> @debug.Repr
+
+pub struct Diff {
+  changes : Array[Change]
+} derive(Eq, @debug.Debug)
+pub fn Diff::equal(Self, Self) -> Bool
+pub fn Diff::not_equal(Self, Self) -> Bool
+pub fn Diff::to_repr(Self) -> @debug.Repr
 
 pub(all) enum Ensure {
   Present

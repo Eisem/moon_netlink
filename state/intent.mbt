@@ -101,9 +101,9 @@ pub fn evaluate_intent(
           address.prefix_length == intent.prefix_length {
           if address.scope != intent.scope ||
             (
-              address.local_address is Some(local) &&
+              address.local_address is Some(local_address) &&
               address.address is Some(peer) &&
-              local != peer
+              local_address != peer
             ) {
             raise StateError::UnsupportedCurrentResource(
               identity=address_identity(intent),

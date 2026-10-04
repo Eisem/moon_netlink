@@ -1086,7 +1086,12 @@ P4-04 已完成：纯 `evaluate_intent` 仅评估显式资源，未声明对象�
 Address/Route absent、拒绝 present；IPv6 IFA_ADDRESS 与默认路由规范化身份可匹配。
 Link absent 明确拒绝（SDK 尚不支持删除）；`up=false` 可禁用现有 Link。peer address、
 不可重现的当前 route 特性/元数据拒绝规划。验收：state intent tests、check +73、fmt/info。
-- [ ] `Diff`；
+- [x] `Diff`；
+
+P4-05 已完成：只对显式未满足字段产生 typed Change，Link 保留 before/after、对象
+携带解析后的 SDK spec。完整 preflight 拒绝隐式地址/路由覆盖及同 slot 多 present；
+允许显式 absent 旧身份 + present 新身份迁移，不删除未管理对象。测试覆盖满足后空
+差分、IPv6 默认路由、显式迁移与冲突。验收：state tests、check +73、fmt/info。
 - [ ] `Plan` 和依赖排序；
 - [ ] loopback/default-route 保护；
 - [ ] dry-run CLI；
