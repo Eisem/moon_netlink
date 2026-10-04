@@ -30,5 +30,6 @@ __pycache__/
 /.aws/
 
 # Local contest reference material; TODO.md contains the relevant requirements.
+/TODO.md
 /MoonBit 黑客松大赛章程/
 

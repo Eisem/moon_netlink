@@ -12,9 +12,6 @@ strict desired configuration parsing, scoped differences and deterministic
 plans. Applying plans and enforcing critical-resource protections remain
 unfinished tasks.
 
-See [TODO.md](./TODO.md) for the project goals, architecture, safety model,
-scope, milestones, and acceptance criteria.
-
 Source files to commit and local files to exclude are listed in
 [docs/repository.md](./docs/repository.md).
 

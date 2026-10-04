@@ -12,10 +12,11 @@
 | `pkg.generated.mbti` | 是 | `moon info --target native` 生成的公共 API 审查记录，不能手工修改 |
 | `cmd/moonnet/`、`examples/` | 是 | 查询、JSONL 监听及隔离修改示例 |
 | `.ci/*.sh`、`.ci/*.py` | 是 | 可复现的隔离 namespace 验证与 `ip -j` 差分脚本 |
-| `README.md`、`TODO.md`、`docs/`、`LICENSE` | 是 | 使用方式、实现进度、协议和安全约定、许可证 |
+| `README.md`、`docs/`、`LICENSE` | 是 | 使用方式、公开实现进度、协议和安全约定、许可证 |
 | `.gitignore`、`.gitattributes` | 是 | 提交边界与跨平台 LF 换行规则 |
 | `_build/`、`target/` | 否 | 可重新生成的构建、测试和文档产物 |
 | `.mooncakes/` | 否 | 通过 `moon update` 下载的依赖；版本由 `moon.mod` 记录 |
+| `TODO.md` | 否 | 本地工程指导和任务记录；不暂存、不提交、不推送，更新留在工作区 |
 | 编译链接产物、Python 缓存、日志、临时文件 | 否 | 本地运行结果，不属于源码 |
 | `.env*`（示例除外）、`.aws/`、`.codex/`、`.agents/` | 否 | 本地凭据或运行状态 |
 | `MoonBit 黑客松大赛章程/` | 否 | 本地参考资料，不是项目实现或项目发布内容 |
@@ -23,7 +24,10 @@
 
 `.ci/` 中的脚本目前需要手动运行；它们不是已配置的 GitHub Actions 工作流。
 Phase 4 已完成 Snapshot/DesiredState/Diff/Plan；保护、dry-run CLI、Apply 与后续
-发布任务仍按 `TODO.md` 保持未完成状态。
+发布任务仍未完成。公开能力与限制以 README 和相关 API 文档为准。
+
+每个小任务完成并验收后独立提交，实现、测试、公开文档和生成接口一同交付。
+任务勾选与内部指导仅更新本地 `TODO.md`，不能把该文件加入任务 commit。
 
 提交前检查：
 
