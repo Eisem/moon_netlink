@@ -27,7 +27,17 @@ pub fn route_priority(@route.Route) -> UInt
 
 pub fn validate_desired(DesiredState) -> Unit raise
 
+pub fn validate_plan(Plan, NetworkSnapshot, dangerous? : Bool) -> Unit raise
+
 // Errors
+pub(all) suberror SafetyError {
+  ProtectedResource(step~ : Int, interface~ : String, reason~ : String)
+  StaleInterface(interface~ : String, planned_index~ : Int, observed_index~ : Int?)
+} derive(Eq, @debug.Debug)
+pub fn SafetyError::equal(Self, Self) -> Bool
+pub fn SafetyError::not_equal(Self, Self) -> Bool
+pub fn SafetyError::to_repr(Self) -> @debug.Repr
+
 pub(all) suberror StateError {
   InvalidField(path~ : String, reason~ : String)
   ConflictingIntent(identity~ : String)
@@ -49,6 +59,7 @@ pub(all) enum Change {
   DeleteRoute(name~ : String, spec~ : @route.RouteSpec)
 } derive(Eq, @debug.Debug)
 pub fn Change::equal(Self, Self) -> Bool
+pub fn Change::interface_index(Self) -> Int
 pub fn Change::interface_name(Self) -> String
 pub fn Change::not_equal(Self, Self) -> Bool
 pub fn Change::to_json(Self) -> Json

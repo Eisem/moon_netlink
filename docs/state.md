@@ -75,4 +75,9 @@ Full change values break ties, so input order cannot change the plan. Every
 step includes a reason and a danger marker for loopback (including its kernel
 flag) or default-route changes. `Plan::to_json` emits version 1 and exact
 operation arguments. Generating a plan is pure and does not apply changes;
-danger markers are review information until the separate safety-check task.
+`validate_plan(plan, snapshot, dangerous=false)` checks every step before a
+write. Loopback names/kernel flags and IPv4/IPv6 default-route additions or
+deletions are protected. It recomputes protection even if callers edit the
+display marker. Explicit dangerous permits those resources; stale/missing
+interface indices and invalid SDK specs still fail. The future executor and
+CLI must reuse this check. Concurrent changes after observation remain possible.
