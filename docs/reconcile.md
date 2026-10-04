@@ -24,4 +24,15 @@ operation is never blindly compensated because its outcome may be unknown.
 Compensation restores supported managed fields/identities, not arbitrary kernel
 metadata, address lifetimes or implicit connected-route effects. Independent
 writers can make compensation fail. This is best-effort recovery, not an atomic
-transaction; final desired-state verification is still a separate task.
+transaction.
+
+`reconcile(backend, desired, dry_run=true, dangerous=false)` owns the desired
+arrays, builds a fresh plan, executes it with the same safeguards, and queries
+again after execution or compensation. Verification contains the observation,
+remaining plan or its original read/comparison error. `succeeded()` requires
+acknowledged execution and an empty final desired-state difference; it remains
+false after a mutation failure, cancellation, unmet goals or verification error.
+Dry-run has no final verification. The lower-level `apply_plan` reports ACKs
+only, so its `succeeded()` is always false without a desired-state verification.
+A verification error alone does not blindly compensate already acknowledged
+changes; the report exposes the uncertainty for caller recovery.

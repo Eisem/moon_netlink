@@ -15,6 +15,7 @@ pub struct ApplyReport {
   dry_run : Bool
   cancelled : Bool
   rollback : Array[RollbackResult]
+  verification : VerificationResult?
 }
 
 ///|
@@ -23,6 +24,13 @@ pub fn ApplyReport::completed_without_error(self : ApplyReport) -> Bool {
   !self.cancelled &&
   self.failed is None &&
   self.completed.length() == self.plan.steps.length()
+}
+
+///|
+/// Success requires both acknowledged execution and a fresh desired-state check.
+pub fn ApplyReport::succeeded(self : ApplyReport) -> Bool {
+  self.completed_without_error() &&
+  self.verification.map(result => result.satisfied()).unwrap_or(false)
 }
 
 ///|
@@ -100,5 +108,9 @@ pub fn ApplyReport::to_json(self : ApplyReport) -> Json {
       ],
     ),
     "execution_completed": Json::boolean(self.completed_without_error()),
+    "succeeded": Json::boolean(self.succeeded()),
+    "verification": self.verification
+    .map(result => result.to_json())
+    .unwrap_or(Json::null()),
   }
 }

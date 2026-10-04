@@ -54,5 +54,6 @@ pub async fn apply_plan(
     dry_run,
     cancelled,
     rollback,
+    verification: None,
   }
 }

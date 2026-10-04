@@ -9,6 +9,8 @@ import {
 // Values
 pub async fn apply_plan(&NetworkBackend, @state.Plan, dry_run? : Bool, dangerous? : Bool) -> ApplyReport
 
+pub async fn reconcile(&NetworkBackend, @state.DesiredState, dry_run? : Bool, dangerous? : Bool) -> ApplyReport
+
 // Errors
 
 // Types and methods
@@ -20,8 +22,10 @@ pub struct ApplyReport {
   dry_run : Bool
   cancelled : Bool
   rollback : Array[RollbackResult]
+  verification : VerificationResult?
 }
 pub fn ApplyReport::completed_without_error(Self) -> Bool
+pub fn ApplyReport::succeeded(Self) -> Bool
 pub fn ApplyReport::to_json(Self) -> Json
 
 pub(all) enum CompensationStatus {
@@ -49,6 +53,14 @@ pub struct StepFailure {
   error : Error
   outcome_unknown : Bool
 }
+
+pub struct VerificationResult {
+  snapshot : @state.NetworkSnapshot?
+  remaining : @state.Plan?
+  error : Error?
+}
+pub fn VerificationResult::satisfied(Self) -> Bool
+pub fn VerificationResult::to_json(Self) -> Json
 
 // Type aliases
 

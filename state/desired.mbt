@@ -256,6 +256,16 @@ fn parse_config_json(text : String) -> Json raise @json.ParseError {
 }
 
 ///|
+/// Own the resource arrays before asynchronous observation/execution.
+pub fn DesiredState::copy(self : DesiredState) -> DesiredState {
+  {
+    links: self.links.copy(),
+    addresses: self.addresses.copy(),
+    routes: self.routes.copy(),
+  }
+}
+
+///|
 fn validate_integer_literals(text : String) -> Unit raise StateError {
   // Json stores ordinary numbers as Double without preserving their spelling.
   // After syntax validation, inspect numeric tokens outside quoted strings so
