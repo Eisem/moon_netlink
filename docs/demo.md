@@ -56,3 +56,25 @@ Each expected CLI failure must exit nonzero. The wrapper exits zero only when
 all failure and recovery assertions pass. It does not deliberately cause kernel
 event loss or compensation failure; independent backend tests cover compensation
 errors, while `.ci/validate-failures.sh` also restores preexisting resources.
+
+## Concurrent typed monitoring and filtering
+
+```sh
+bash demo/monitor.sh
+```
+
+Two monitors subscribe and signal ready before the CLI applies the fixed desired
+state and then removes the explicitly managed addresses/routes. The demo prints
+projections of real Link and IPv4/IPv6 Address/Route events. It requires both
+additions and deletions and verifies that the route-only subscription receives
+only route events. Every listener and pipe reader is stopped in `finally`, even
+when an assertion or command fails.
+
+Netlink multicast is lossy. The CLI exits with a diagnostic on
+`EventStreamLost`; consumers must discard their cached state, query a fresh
+snapshot and resubscribe. The demo explains this recovery but does not force
+kernel event loss. The deterministic overrun fixture is checked separately:
+
+```sh
+moon test transport --target native --filter '*overrun*'
+```
