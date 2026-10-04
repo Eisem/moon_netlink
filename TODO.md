@@ -1110,13 +1110,14 @@ Link UP、添加地址、添加路由、Link DOWN 排序，完整值确定 tie-b
 loopback/default-route danger 标记与可审查 JSON 参数。反转三类输入仍得到一致计划、
 空 desired 不生成操作、生成计划不改变输入有测试。验收：state tests、check +73、
 fmt/info。生成计划不执行网络操作；安全批准、dry-run CLI、apply 尚待独立提交。
-- [ ] loopback/default-route 保护；
-- [ ] dry-run CLI；
-- [ ] `ApplyReport`；
-- [ ] best-effort rollback；
-- [ ] apply 后重新验证；
-- [ ] 幂等性 E2E：第二次 plan 为空；
-- [ ] 冲突 desired state 和中途失败测试。
+- [ ] P4-07：loopback/default-route 保护公共 API；默认拒绝、显式 dangerous 放行均有测试，后续声明式执行器和 CLI 复用此检查；
+- [ ] P4-08：dry-run CLI；`plan desired.json` 和未带 `--yes` 的 `apply` 输出同一计划，支持人读/JSON，隔离测试确认网络不变化；
+- [ ] P4-09：顺序执行器和 `ApplyReport`；执行前复用 P4-07 安全检查，调用 SDK 执行每一步，首次失败停止，报告已完成/失败/未执行项，保留结构化内核错误；
+- [ ] P4-10：best-effort rollback；仅补偿本次已完成且可补偿的操作，倒序执行，保留原始错误和每项回滚失败，不宣称原子事务；
+- [ ] P4-11：apply 后重新验证；重查实际状态，对未满足意图输出具体差分，ACK 成功但状态未达成也不能报告成功；
+- [ ] P4-14：Apply CLI 接入；`apply desired.json --yes` 复用公共安全检查并组合执行、回滚和最终验证，输出人读/JSON 报告，失败返回非零退出码；
+- [ ] P4-12：幂等性 E2E；隔离 namespace 第一次通过 CLI apply 达成 IPv4/IPv6 目标，第二次 plan 为空，未声明资源仍保留；
+- [ ] P4-13：冲突 desired state 和中途失败集成测试；冲突在写入前拒绝，中途失败验证已完成/未执行项、补偿及最终实际状态。
 
 退出条件：
 
@@ -1125,18 +1126,27 @@ fmt/info。生成计划不执行网络操作；安全批准、dry-run CLI、appl
 - 第二次 plan 为空；
 - 人为制造失败时报告已完成、失败及回滚步骤。
 
+P4-14 是本次核对补出的 CLI 交付边界，编号用于追踪，不表示必须按数字执行。
+依赖顺序：P4-07 → P4-08 → P4-09 → P4-10 → P4-11 → P4-14 → P4-12/P4-13。
+当前 Plan 的 danger 标记不算 P4-07 完成；已有 SDK mutation 示例不算 Apply CLI 完成。
+
 ### Phase 5：展示、性能与下游场景（2026-10-21 ～ 2026-10-22）
 
-- [ ] 容器网络初始化完整示例；
-- [ ] snapshot/plan/apply 演示；
-- [ ] monitor 演示；
-- [ ] 与 shelling out to `ip -j` 的延迟/开销基线；
-- [ ] 大量 route/neighbor fixture 的解析基线；
+- [ ] 容器网络初始化完整示例；在临时 namespace/veth 上用公共 API 配置 UP、MTU、IPv4/IPv6 地址和路由，查询及 `ip -j` 验证，成功/失败均清理；
+- [ ] snapshot/plan/apply 演示；固定 desired 文件，展示初始快照、dry-run、显式确认、最终验证、第二次空计划，参见第 18 节；
+- [ ] monitor 演示；并行监听实际修改，展示类型化事件及过滤，丢事件时明确要求重新采集，结束后没有遗留监听进程；
+- [ ] P5-D1：受控失败演示；在隔离环境中稳定触发中途失败，展示原始错误、部分完成、补偿结果和最终状态，另演示受保护操作默认被拒绝；
+- [ ] 与 shelling out to `ip -j` 的延迟/开销基线；同一 namespace/对象规模/字段语义，记录预热、重复次数和统计分布，区分进程启动、JSON 解析与 SDK 查询成本，不预设谁更快；
+- [ ] 大量 route/neighbor fixture 的解析基线；不批量修改宿主网络，固定输入规模和数据生成方法，记录工具链/硬件/内核、时间与可测的内存或分配指标；
 - [ ] 检查不必要分配和 Bytes 拷贝；
-- [ ] 输出 demo 脚本或录屏所需步骤；
+- [ ] 输出 demo 脚本或录屏所需步骤；一条入口可复现，列明依赖、权限和预期输出，分别断言成功与预期失败退出码；
 - [ ] 写清楚“为什么这不是一个薄 binding”。
+- [ ] P5-Q1：可复现随机健壮性测试；固定 seed 和运行预算，生成属性顺序/未知属性/错误长度/截断/嵌套等输入，断言无 crash、无 hang，失败样例转为最小回归 fixture；
+- [ ] P5-Q2：覆盖率基线；记录 core/route/state/transport/reconcile 的覆盖报告和关键未覆盖分支，优先补长度检查、取消/超时、事件丢失、保护、部分失败及补偿路径，逐项解释平台相关豁免；
+- [ ] P5-Q3：验证环境矩阵；记录已测 Linux 内核、架构、MoonBit/async/iproute2 版本和 namespace 能力，增加可获得的独立环境复验，不把一次 WSL 通过宣传为广泛兼容。
 
-退出条件：三个主要场景均可由新用户按 README 在隔离环境复现。
+退出条件：三个主要场景均可由新用户按 README 在隔离环境复现；受控失败能重现并
+核对最终状态；健壮性、覆盖率和性能结果有可重跑的命令及适用范围。
 
 ### Phase 6：发布与赛事验收（2026-10-23 ～ 2026-10-24）
 
@@ -1145,16 +1155,40 @@ fmt/info。生成计划不执行网络操作；安全批准、dry-run CLI、appl
 - [ ] architecture / protocol / safety 文档；
 - [ ] 参考来源和许可证清单；
 - [ ] API docs 和 `pkg.generated.mbti`；
-- [ ] GitHub Actions：check/build/test；
-- [ ] 隔离的 privileged integration job；
-- [ ] release 构建；
-- [ ] mooncakes.io 发布；
-- [ ] GitHub release 和 changelog；
-- [ ] 从干净环境按 README 完整复现；
+- [ ] GitHub Actions：check/build/test；push/PR 自动执行 fmt、native check/build/test、可测试文档，固定工具链和依赖，保存失败诊断，确认真实远程运行通过；
+- [ ] 隔离的 privileged integration job；运行查询/修改/监听和 Phase 4 E2E，检查 namespace 能力并限制超时，成功/失败清理；缺权限必须显式记录，不能当作 E2E 通过；
+- [ ] P6-Q1：覆盖率回归门禁；依赖 P5-Q2，保存基线和报告，对未说明的覆盖倒退失败，新增失败分支必须有相应验证，豁免需写原因；
+- [ ] release 构建；记录 Linux 架构、动态链接/运行库要求、版本、校验和及构建命令，在干净环境试运行发布产物；
+- [ ] mooncakes.io 发布；审查包文件清单，明确 native/Linux 支持和最小 C shim，排除缓存/本地资料，发布版本及公共 API 可追溯；
+- [ ] P6-C1：独立 consumer 项目；从 Mooncakes 安装固定发布版本，通过公开 API 完成查询/监听及隔离配置示例，不使用本仓源码路径、symlink 或 workspace 替代包安装；
+- [ ] P6-C2：consumer 自动验收；依赖 P6-C1，在干净 Linux CI 中安装并运行已发布包，核对公共接口、依赖/C shim 的打包和 namespace 场景，保留运行证据；
+- [ ] GitHub release 和 changelog；tag 对应源码提交，发布说明包含安装、能力、限制、破坏性变化及构建产物，不能把未完成 Apply 宣传为可用；
+- [ ] 从干净环境按 README 完整复现；使用公开包或 release，验证安装、三个场景、失败演示和清理，不依赖作者工作区的缓存；
 - [ ] 检查有效 commit 数和开发记录；
 - [ ] 准备季度评选说明：生态价值、工程难点、验证证据、后续路线。
 
 退出条件：满足章程全部验收条款，不依赖作者机器上的隐含配置。
+
+### 14.1 完整交付核对与执行顺序（2026-10-04）
+
+本次只完成交付要求核对与补充；以下功能仍按对应未勾选条目验收，不因写入计划而
+视为已经实现。不新建重复的功能清单，交付要求统一落在 Phase 4～6。
+
+| 完整交付 | 原 TODO 覆盖 | 本次补齐的边界与证据 |
+| --- | --- | --- |
+| 安全 plan/apply、报告、回滚、验证、幂等性 | 第 10 节及 P4-07～P4-13 已有 | 明确顺序执行和报告内容；新增 P4-14 CLI 接入；dry-run、保护、状态验证和 CLI E2E 必须一起形成闭环 |
+| 自动 CI、包发布、独立 consumer | Phase 6 已有 CI/发布；第 3.2 节仅概括下游使用 | 新增 P6-C1/P6-C2；独立项目从真实发布包安装，并在干净 CI 运行，不能只证明仓库自身能构建 |
+| 完整容器场景及成功/失败演示 | 第 4/18 节和 Phase 5 已有成功流程 | 明确 IPv4/IPv6、实际状态对拍、清理与预期退出码；新增 P5-D1 受控失败及保护演示 |
+| 健壮性、覆盖率和性能基线 | 第 13.5 节和 Phase 5 已有健壮性/性能方向 | 新增 P5-Q1 固定 seed 随机测试、P5-Q2 覆盖率、P5-Q3 环境矩阵、P6-Q1 覆盖率门禁；细化公平性能比较 |
+
+下一轮先完成 P4-07，再依上述依赖推进闭环。Phase 5 的功能演示依赖 Phase 4 完成；
+健壮性测试、覆盖率采集及基础 CI 可在相关代码稳定后提前推进。发布 consumer 验收
+必须在真实包发布之后；最终演示使用已验证的发布版本。
+
+每个小 TODO 继续独立提交（第 19.1 节）。新增编号各自形成一个交付 commit，已有
+条目只补充验收条件，不重新拆分或重写已完成历史。本次文档核对作为一笔独立提交。
+本次核对验收：`git diff --check` 通过；对照 HEAD 保留原有 60 个已完成条目，新功能
+均未勾选；审查新增任务的阶段、依赖和提交边界。此次仅修改文档，无公共 API 变化。
 
 ---
 
@@ -1320,12 +1354,13 @@ Phase 4 逐项提交边界如下；每行对应上方 Phase 4 的一个小 TODO�
 | P4-04 | present/absent 语义 | 仅处理显式资源；未声明资源不删除；不支持的意图明确拒绝 |
 | P4-05 | `Diff` | 已满足意图为空差分；IPv4/IPv6 和默认路由身份规范化 |
 | P4-06 | `Plan` 和依赖排序 | 确定性顺序、原因，添加/删除依赖测试 |
-| P4-07 | loopback/default-route 保护 | 默认拒绝受保护修改；显式 dangerous 放行测试 |
-| P4-08 | dry-run CLI | 严格读取配置、可审查输出、实际网络不变化 |
-| P4-09 | `ApplyReport` | 逐步成功/失败及部分完成报告 |
+| P4-07 | loopback/default-route 保护公共 API | 默认拒绝及显式 dangerous 放行测试；供后续执行器/CLI 复用 |
+| P4-08 | dry-run CLI | 严格读取配置；plan 与未确认 apply 一致；实际网络不变化 |
+| P4-09 | 顺序执行器与 `ApplyReport` | 调用 SDK，失败停止；记录完成/失败/未执行及结构化错误 |
 | P4-10 | best-effort rollback | 倒序补偿、回滚失败保留，无原子事务宣传 |
 | P4-11 | apply 后重新验证 | 查询实际状态，报告未达成目标，不只看 ACK |
-| P4-12 | 幂等性 E2E | 隔离 namespace 第一次 apply 后第二次 plan 为空 |
+| P4-14 | Apply CLI 接入（依赖 P4-07～P4-11） | 显式确认、可审查报告、失败退出码；未确认仍为 dry-run |
+| P4-12 | 幂等性 E2E | 隔离 namespace 第一次 CLI apply 后第二次 plan 为空；未管理资源保留 |
 | P4-13 | 冲突输入和中途失败集成测试 | 拒绝冲突；记录已完成、失败及回滚结果 |
 
 仓库总提交数要求为至少 11 笔。本轮起点为 4 笔已推送提交；通过完成真实 TODO
@@ -1347,7 +1382,12 @@ Phase 4 逐项提交边界如下；每行对应上方 Phase 4 的一个小 TODO�
 - [ ] `moon check`、`moon test`、`moon fmt`、`moon info` 通过；
 - [ ] CI 从干净环境通过；
 - [ ] mooncakes.io 包可安装；
+- [ ] 独立 consumer 从固定发布版本安装并在干净 CI 验证，不引用仓库源码；
 - [ ] GitHub release 可下载/构建；
+- [ ] 受控中途失败和受保护操作拒绝有可复现演示及最终状态证据；
+- [ ] 固定 seed 健壮性测试、覆盖率报告及回归门禁通过，关键失败路径与豁免可审查；
+- [ ] 性能基线可重跑，说明等价工作量、环境、统计方法和限制，不预设性能优势；
+- [ ] Linux 兼容范围与未测试环境有明确记录；
 - [ ] README 明确 Linux/native/权限限制；
 - [ ] 参考来源与许可证合规；
 - [ ] 没有用“原子事务”“完整 iproute2 替代”等不准确宣传；
