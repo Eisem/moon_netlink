@@ -1,4 +1,26 @@
 ///|
+test "desired numbers cannot round fractions or underflow into integers" {
+  for
+    number in [
+      "4294967295.0000000001", "1.0000000000000000001", "1e-999", "-0", "1.0", "1e0",
+    ] {
+    let input = "{\"schema_version\":1,\"routes\":[{\"interface\":\"veth0\",\"ensure\":\"present\",\"destination\":\"192.0.2.0\",\"prefix_length\":24,\"priority\":\{number}}]}"
+    try @state.DesiredState::parse(input) catch {
+      @state.StateError::InvalidField(..) => ()
+      err => fail("unexpected numeric error: \{Repr(err)}")
+    } noraise {
+      _ => fail("noncanonical integer accepted: \{number}")
+    }
+  }
+  let desired = @state.DesiredState::parse(
+    "{\"schema_version\":1,\"links\":[{\"name\":\"veth\\u0031e-0\",\"ensure\":\"present\",\"mtu\":4294967295}],\"routes\":[{\"interface\":\"veth0\",\"ensure\":\"absent\",\"destination\":\"192.0.2.0\",\"prefix_length\":24,\"priority\":0}]}",
+  )
+  assert_eq(desired.links[0].name, "veth1e-0")
+  assert_eq(desired.links[0].mtu, Some(4294967295U))
+  assert_eq(desired.routes[0].priority, 0U)
+}
+
+///|
 test "desired schema parses explicit intent and family-specific defaults" {
   let desired = @state.DesiredState::parse(
     "{\"schema_version\":1,\"routes\":[{\"interface\":\"veth0\",\"ensure\":\"present\",\"destination\":\"2001:db8::\",\"prefix_length\":64}]}",

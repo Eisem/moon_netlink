@@ -248,10 +248,6 @@ pub fn validate_desired(desired : DesiredState) -> Unit raise {
 }
 
 ///|
-/// Parse schema version 1. JSON syntax/IP errors retain their original types.
-/// A one-Mi-code-unit and 64-level limit bounds untrusted configuration parsing.
-
-///|
 #warnings("-deprecated")
 fn parse_config_json(text : String) -> Json raise @json.ParseError {
   // The current core marks this limit parameter deprecated, but it is the
@@ -260,6 +256,56 @@ fn parse_config_json(text : String) -> Json raise @json.ParseError {
 }
 
 ///|
+fn validate_integer_literals(text : String) -> Unit raise StateError {
+  // Json stores ordinary numbers as Double without preserving their spelling.
+  // After syntax validation, inspect numeric tokens outside quoted strings so
+  // precision loss cannot turn a fraction or an underflow into a valid UInt.
+  let units = text.to_array()
+  let mut index = 0
+  let mut quoted = false
+  let mut escaped = false
+  while index < units.length() {
+    let code = units[index].to_int()
+    if quoted {
+      if escaped {
+        escaped = false
+      } else if code == 92 {
+        escaped = true
+      } else if code == 34 {
+        quoted = false
+      }
+      index += 1
+    } else if code == 34 {
+      quoted = true
+      index += 1
+    } else if (code >= 48 && code <= 57) || code == 45 {
+      while index < units.length() {
+        let digit = units[index].to_int()
+        if digit >= 48 && digit <= 57 {
+          index += 1
+        } else if digit == 46 ||
+          digit == 69 ||
+          digit == 101 ||
+          digit == 43 ||
+          digit == 45 {
+          raise InvalidField(
+            path="root",
+            reason="numbers require unsigned decimal integer literals",
+          )
+        } else {
+          break
+        }
+      }
+    } else {
+      index += 1
+    }
+  }
+}
+
+///|
+/// Parse schema version 1. JSON syntax/IP errors retain their original types.
+/// A one-Mi-code-unit and 64-level limit bounds untrusted configuration parsing.
+/// Numeric fields require unsigned decimal integer literals, without exponents.
 pub fn DesiredState::parse(text : String) -> DesiredState raise {
   if text.length() > 1024 * 1024 {
     raise StateError::InvalidField(
@@ -267,8 +313,10 @@ pub fn DesiredState::parse(text : String) -> DesiredState raise {
       reason="configuration too large",
     )
   }
+  let json = parse_config_json(text)
+  validate_integer_literals(text)
   let root = object_fields(
-    parse_config_json(text),
+    json,
     ["schema_version", "links", "addresses", "routes"],
     "root",
   )

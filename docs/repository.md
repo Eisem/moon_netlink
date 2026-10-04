@@ -7,6 +7,7 @@
 | --- | --- | --- |
 | `moon.mod`、各包的 `moon.pkg` | 是 | 模块元数据、固定版本的依赖与构建配置 |
 | `core/`、`route/`、`transport/` 的 `.mbt`、C shim | 是 | SDK 实现与原生 socket 边界 |
+| `state/` 的 `.mbt` | 是 | Snapshot、严格配置 schema、显式意图、Diff 和 Plan 的纯状态实现 |
 | `*_test.mbt`、`*_wbtest.mbt` | 是 | 纯协议、失败路径和 Linux 回归测试；fixtures 内嵌于测试源码 |
 | `pkg.generated.mbti` | 是 | `moon info --target native` 生成的公共 API 审查记录，不能手工修改 |
 | `cmd/moonnet/`、`examples/` | 是 | 查询、JSONL 监听及隔离修改示例 |
@@ -21,7 +22,8 @@
 | `.git/` | 否 | Git 自己维护的历史与本地配置，不作为源码文件提交 |
 
 `.ci/` 中的脚本目前需要手动运行；它们不是已配置的 GitHub Actions 工作流。
-Phase 4 的声明式引擎及后续发布任务仍按 `TODO.md` 保持未完成状态。
+Phase 4 已完成 Snapshot/DesiredState/Diff/Plan；保护、dry-run CLI、Apply 与后续
+发布任务仍按 `TODO.md` 保持未完成状态。
 
 提交前检查：
 

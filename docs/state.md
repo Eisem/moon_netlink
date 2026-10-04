@@ -8,7 +8,7 @@ payload bytes remain owned values.
 Names identify desired links; indices reference objects in an observation.
 `interface_name` and `link_by_name` return `None` for missing/unnamed objects.
 A caller collects four dumps and constructs the snapshot. These observations
-are not an atomic kernel snapshot. JSON and planning are separate tasks.
+are not an atomic kernel snapshot.
 
 `normalize` copies and sorts all collections, using link/interface name then
 complete raw fields as tie-breakers. It resolves Address/Neighbor names from
@@ -35,13 +35,17 @@ positive u32 `mtu`; addresses require `interface`, IP `address` and numeric
 to IPv4 0 / IPv6 1024. IPv4 direct-route scope defaults to 253, others to 0.
 Explicit IPv6 priority zero also means the kernel user-route default 1024.
 
+Numeric fields require unsigned decimal integer literals (`0` or digits);
+decimal points, exponents and minus signs are rejected before conversion.
+This prevents Double rounding or underflow from silently accepting a fraction.
+Quoted strings such as IP addresses are unaffected.
+
 Unknown keys, wrong types, noninteger/out-of-range numbers, invalid names,
 family/prefix mismatches and noncanonical routes fail. Repeated resource
 identities are rejected, including opposite ensure intents. `validate_desired`
 also checks typed SDK callers. Schema errors contain field paths; JSON syntax
 and IP/route validation retain their original error types. JSON nesting and
 input size are bounded. Parsing uses the core JSON parser's object-key rules.
-Interpretation of present/absent and diff are the next independent tasks.
 
 `evaluate_intent` considers only explicitly declared resources. Present means
 the declared identity and supported fields match; absent means that identity

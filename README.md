@@ -7,8 +7,10 @@ The SDK currently supports typed Link/Address/Route/Neighbor queries,
 Link UP/DOWN and MTU changes, IPv4/IPv6 address and unicast route add/delete,
 and typed multicast events. Protocol encoding and decoding are implemented
 in MoonBit; the C shim only opens and transfers the Linux socket. SDK queries
-and mutations do not invoke `ip`. The declarative snapshot/diff/plan/apply
-engine remains the next implementation phase.
+and mutations do not invoke `ip`. The state package provides owned snapshots,
+strict desired configuration parsing, scoped differences and deterministic
+plans. Applying plans and enforcing critical-resource protections remain
+unfinished tasks.
 
 See [TODO.md](./TODO.md) for the project goals, architecture, safety model,
 scope, milestones, and acceptance criteria.
@@ -26,6 +28,8 @@ The query/event CLI and deterministic JSON contract are documented in
 [docs/cli.md](./docs/cli.md).
 The reproducible Linux comparison with `ip -j` is documented in
 [docs/differential.md](./docs/differential.md).
+The desired schema, snapshots and pure planning APIs are documented in
+[docs/state.md](./docs/state.md).
 
 ## CLI
 
@@ -47,6 +51,7 @@ moon run --target native cmd/moonnet -- address show --json
 moon run --target native cmd/moonnet -- route show
 moon run --target native cmd/moonnet -- neighbor show --json
 moon run --target native cmd/moonnet -- watch all --jsonl
+moon run --target native cmd/moonnet -- snapshot
 ```
 
 All four commands sort their output deterministically. JSON uses canonical

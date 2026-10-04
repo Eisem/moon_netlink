@@ -1080,6 +1080,17 @@ P4-03 已完成：版本 1 typed DesiredState 与严格 JSON schema，限制层�
 拒绝未知字段、缺失值、错误类型、非整数/溢出、非法名称、IP/prefix/gateway、重复身份
 和冲突意图。数值默认值按 family 明确，typed 输入也可 `validate_desired`。
 验收：native state tests、check +73、fmt/info；解析语法/IP 错误保留原类型。
+
+- [x] P4-03-F1：防止 JSON 浮点舍入绕过整数校验（独立修复提交）；
+
+回归先复现 `4294967295.0000000001` 被错误接受；随后在语法解析后检查原始数字 token，
+schema 数值限定无符号十进制整数写法，不接受小数点、指数、负号；字符串内的 IP 等
+不受影响。覆盖高精度小数、下溢、边界 u32 与零；验收：native state tests、check +73、
+fmt/info。README 与提交文件清单同步标明已经完成的纯状态功能。最终完整验收：
+Windows native 87/87；Git archive 干净源码 Linux native 94/94、真实 transport 8/8；
+`.ci/validate-queries.sh`、`validate-link-state.sh`、`validate-mutations.sh` 全部通过，
+查询/修改与 `ip -j` 一致，隔离监听与清理通过。依赖 async 的 C 编译器警告不影响结果。
+
 - [x] present/absent 语义；
 
 P4-04 已完成：纯 `evaluate_intent` 仅评估显式资源，未声明对象不删除；缺失接口满足
