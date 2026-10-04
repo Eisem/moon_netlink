@@ -10,7 +10,8 @@ in MoonBit; the C shim only opens and transfers the Linux socket. SDK queries
 and mutations do not invoke `ip`. The state package provides owned snapshots,
 strict desired configuration parsing, scoped differences and deterministic
 plans. The planning CLI defaults to dry-run and checks critical-resource
-protections. Confirmed execution of plans remains unfinished.
+protections. Explicit `apply --yes` executes in order, reports partial failure,
+attempts compensation and verifies desired state with a fresh observation.
 
 Source files to commit and local files to exclude are listed in
 [docs/repository.md](./docs/repository.md).
@@ -99,8 +100,10 @@ are cleaned up on success or failure. No host interface is modified.
 The example requires an explicit `--yes`; use it only on a disposable interface
 inside a temporary namespace. The SDK applies mutations directly. Default
 dry-run and loopback/default-route checks are available in the planning CLI;
-confirmed plan execution is not available yet. Direct SDK mutations remain
-the caller's responsibility.
+confirmed `apply --yes` uses the same checks and reports final verification.
+Direct SDK mutations remain the caller's responsibility. Use
+`bash .ci/validate-apply.sh` to demonstrate confirmed apply in a temporary
+namespace. Recovery is best-effort and does not provide atomic transactions.
 
 ## License
 

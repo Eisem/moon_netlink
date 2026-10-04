@@ -15,7 +15,7 @@ struct CliOptions {
 ///|
 fn usage() -> String {
   (
-    #|MoonNetlink read-only CLI
+    #|MoonNetlink query, planning and apply CLI
     #|
     #|Usage:
     #|  moonnet link show [--json]
@@ -25,7 +25,7 @@ fn usage() -> String {
     #|  moonnet watch [link|address|route|neighbor|all] [--jsonl]
     #|  moonnet snapshot
     #|  moonnet plan desired.json [--json] [--dangerous]
-    #|  moonnet apply desired.json [--json] [--dangerous]  (dry-run)
+    #|  moonnet apply desired.json [--json] [--yes] [--dangerous]
   )
 }
 
@@ -82,6 +82,7 @@ async fn main {
   run_cli() catch {
     error => {
       let text = match error {
+        ApplyFailed => "apply failed; see execution and verification report"
         @transport.TransportError::KernelRejected(errno~) =>
           "kernel rejected request (errno \{errno})"
         @transport.TransportError::KernelRejectedDetailed(errno~, extack~, ..) =>

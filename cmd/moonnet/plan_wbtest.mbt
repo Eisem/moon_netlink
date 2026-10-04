@@ -1,5 +1,5 @@
 ///|
-test "plan and unconfirmed apply share strict options and reject confirmation" {
+test "plan and unconfirmed apply share strict options and confirmation is apply only" {
   for command in ["plan", "apply"] {
     guard parse_plan_args([
         "moonnet", command, "desired.json", "--dangerous", "--json",
@@ -11,7 +11,7 @@ test "plan and unconfirmed apply share strict options and reject confirmation" {
     assert_eq(options.path, "desired.json")
     for
       flags in [
-        ["--yes"],
+        ["--yes", "--yes"],
         ["--json", "--json"],
         ["--dangerous", "--dangerous"],
         ["--unknown"],
@@ -23,6 +23,14 @@ test "plan and unconfirmed apply share strict options and reject confirmation" {
     }
   }
   assert_true(parse_plan_args(["moonnet", "plan"]) is None)
+  assert_true(
+    parse_plan_args(["moonnet", "plan", "desired.json", "--yes"]) is None,
+  )
+  guard parse_plan_args(["moonnet", "apply", "desired.json", "--yes"])
+    is Some(confirmed) else {
+    fail("confirmation rejected")
+  }
+  assert_true(confirmed.execute)
 }
 
 ///|

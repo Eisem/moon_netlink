@@ -62,18 +62,27 @@ Event loss displays a request to query a fresh snapshot and exits nonzero;
 the CLI does not reconnect silently. Monitor buffering and recovery rules are
 documented in [transport.md](transport.md).
 
-## Plan and unconfirmed apply
+## Plan and apply
 
 ```text
 moonnet plan desired.json [--json] [--dangerous]
 moonnet apply desired.json [--json] [--dangerous]
+moonnet apply desired.json --yes [--json] [--dangerous]
 ```
 
-Both commands currently perform the same read-only planning workflow. `apply`
-without confirmation never mutates; `--yes` is rejected until the executor is
-available. A regular UTF-8 configuration file is read with a 1 MiB limit before
+`plan` and unconfirmed `apply` perform the same read-only planning workflow.
+Only `apply --yes` enables sequential execution, compensation on failure and
+fresh desired-state verification. `plan --yes` and duplicate confirmation are
+rejected. A regular UTF-8 configuration file is read with a 1 MiB limit before
 opening a route socket. Schema and SDK validation errors remain structured.
 Planning uses a fresh snapshot and shared safety validation. Loopback/default
-route changes require explicit `--dangerous`, which permits review but does not
-execute them. JSON is the version-1 Plan shape; human output lists every exact
+route changes require explicit `--dangerous`, which alone does not execute them.
+Preview JSON is the version-1 Plan shape; human output lists every exact
 operation, reason and danger marker. Duplicate or unknown flags fail.
+
+Confirmed apply emits an ApplyReport (JSON or human) with completed, failed and
+unexecuted steps, each compensation result and final verification. Reports go
+to stdout before a nonzero exit for mutation failure, cancellation, unmet goals
+or verification error. Preflight rejection reports its original error on stderr
+before any write. See [reconcile.md](reconcile.md) for outcome uncertainty and
+recovery limits. Run `bash .ci/validate-apply.sh` for a disposable namespace demo.

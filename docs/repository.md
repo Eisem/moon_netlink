@@ -8,6 +8,7 @@
 | `moon.mod`、各包的 `moon.pkg` | 是 | 模块元数据、固定版本的依赖与构建配置 |
 | `core/`、`route/`、`transport/` 的 `.mbt`、C shim | 是 | SDK 实现与原生 socket 边界 |
 | `state/` 的 `.mbt` | 是 | Snapshot、严格配置 schema、显式意图、Diff 和 Plan 的纯状态实现 |
+| `reconcile/` 的 `.mbt` | 是 | 顺序执行、部分失败报告、尽力补偿和最终状态验证 |
 | `*_test.mbt`、`*_wbtest.mbt` | 是 | 纯协议、失败路径和 Linux 回归测试；fixtures 内嵌于测试源码 |
 | `pkg.generated.mbti` | 是 | `moon info --target native` 生成的公共 API 审查记录，不能手工修改 |
 | `cmd/moonnet/`、`examples/` | 是 | 查询、JSONL 监听及隔离修改示例 |
@@ -23,8 +24,8 @@
 | `.git/` | 否 | Git 自己维护的历史与本地配置，不作为源码文件提交 |
 
 `.ci/` 中的脚本目前需要手动运行；它们不是已配置的 GitHub Actions 工作流。
-Phase 4 已完成 Snapshot/DesiredState/Diff/Plan、保护 API 和 dry-run CLI；确认后的
-Apply 与后续发布任务仍未完成。公开能力与限制以 README 和相关 API 文档为准。
+当前已支持 Snapshot/DesiredState/Diff/Plan、保护 API、dry-run 和确认后的 Apply CLI。
+后续集成验收与发布任务继续推进。公开能力与限制以 README 和相关 API 文档为准。
 
 每个小任务完成并验收后独立提交，实现、测试、公开文档和生成接口一同交付。
 任务勾选与内部指导仅更新本地 `TODO.md`，不能把该文件加入任务 commit。
@@ -50,6 +51,7 @@ bash .ci/validate-queries.sh
 bash .ci/validate-link-state.sh
 bash .ci/validate-mutations.sh
 bash .ci/validate-plan.sh
+bash .ci/validate-apply.sh
 ```
 
 新增源码应明确加入暂存区，再检查暂存清单。不要用 `git add -f` 将被忽略的本地文件

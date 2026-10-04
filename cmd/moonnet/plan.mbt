@@ -3,7 +3,11 @@ struct PlanOptions {
   path : String
   json : Bool
   dangerous : Bool
+  execute : Bool
 }
+
+///|
+suberror ApplyFailed derive(Debug)
 
 ///|
 fn parse_plan_args(args : ArrayView[String]) -> PlanOptions? {
@@ -15,14 +19,16 @@ fn parse_plan_args(args : ArrayView[String]) -> PlanOptions? {
   }
   let mut json = false
   let mut dangerous = false
+  let mut execute = false
   for option in args[3:] {
     match option {
       "--json" if !json => json = true
       "--dangerous" if !dangerous => dangerous = true
+      "--yes" if args[1] == "apply" && !execute => execute = true
       _ => return None
     }
   }
-  Some({ path: args[2], json, dangerous, })
+  Some({ path: args[2], json, dangerous, execute, })
 }
 
 ///|
@@ -84,11 +90,25 @@ fn format_plan(plan : @state.Plan, json : Bool) -> String {
 
 ///|
 async fn run_plan_cli(options : PlanOptions) -> Unit {
-  // Parse before opening a socket. This path contains no mutation calls.
+  // Parse before opening a socket. Confirmation alone enables execution.
   let desired = read_desired_file(options.path)
   @async.with_task_group(group => {
     let client = @transport.RouteClient::open()
     group.add_defer(() => @async.protect_from_cancel(() => client.close()))
+    if options.execute {
+      let backend = @reconcile.RouteBackend::new(client)
+      let report = @reconcile.reconcile(
+        backend,
+        desired,
+        dry_run=false,
+        dangerous=options.dangerous,
+      )
+      println(format_apply_report(report, options.json))
+      if !report.succeeded() {
+        raise ApplyFailed
+      }
+      return
+    }
     let snapshot = collect_snapshot(client)
     let plan = @state.build_plan(snapshot, desired)
     @state.validate_plan(plan, snapshot, dangerous=options.dangerous)
