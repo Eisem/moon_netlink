@@ -1,0 +1,15 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "eisem/moonnetlink/cmd/moonnet"
+
+// Values
+
+// Errors
+
+// Types and methods
+type CliOptions
+
+type ObjectKind
+
+// Type aliases
+
+// Traits

@@ -27,6 +27,17 @@ test "full receive buffer fails closed" {
 }
 
 ///|
+test "request timeout must be positive" {
+  try validate_request_timeout(0) catch {
+    InvalidRequestTimeout(timeout_ms~) => assert_eq(timeout_ms, 0)
+    err => fail("unexpected error: \{Repr(err)}")
+  } noraise {
+    _ => fail("expected a zero timeout to fail")
+  }
+  validate_request_timeout(1)
+}
+
+///|
 test "live truncation probe uses one valid Netlink datagram" {
   let request = @route.encode_get_links(9001)
   assert_eq(request.length(), 32)
@@ -54,4 +65,39 @@ async test "live Netlink datagram truncation fails closed" {
   } noraise {
     _ => fail("expected the tiny receive buffer to reject the live dump")
   }
+}
+
+///|
+/// A mismatched expected sequence ignores the complete response and blocks.
+/// Timing it out must cancel the pending RawFd read cleanly enough that the
+/// same socket can immediately complete a new request with a fresh sequence.
+#cfg(not(platform="windows"))
+async test "live timed-out request leaves route socket reusable" {
+  let socket = RouteSocket::open()
+  defer socket.close()
+  let sent_sequence : UInt = 9101
+  let expected_sequence : UInt = 9102
+  try
+    @async.with_timeout(
+      20,
+      () => {
+        socket.request_dump(
+          @route.encode_get_links(sent_sequence),
+          expected_sequence,
+        )
+      },
+      error=TransportError::RequestTimedOut(timeout_ms=20),
+    )
+  catch {
+    RequestTimedOut(timeout_ms~) => assert_eq(timeout_ms, 20)
+    err => fail("unexpected error: \{Repr(err)}")
+  } noraise {
+    _ => fail("expected mismatched sequence request to time out")
+  }
+  let recovery_sequence : UInt = 9103
+  let messages = socket.request_dump(
+    @route.encode_get_links(recovery_sequence),
+    recovery_sequence,
+  )
+  assert_true(@route.decode_links(messages).length() > 0)
 }

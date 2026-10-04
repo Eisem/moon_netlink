@@ -10,9 +10,23 @@ pub fn align4(Int) -> Int
 
 pub fn decode_attributes(BytesView, Int) -> Array[NetlinkAttribute] raise CodecError
 
+pub fn decode_control(NetlinkMessage) -> NetlinkControl? raise CodecError
+
 pub fn decode_datagram(BytesView) -> Array[NetlinkMessage] raise CodecError
 
+pub fn decode_extended_ack(NetlinkMessage) -> ExtendedAck? raise CodecError
+
+pub fn encode_attribute(NetlinkAttribute) -> Bytes raise CodecError
+
+pub fn encode_message(NetlinkMessage) -> Bytes
+
+pub let nla_f_nested : UInt16
+
+pub let nla_f_net_byteorder : UInt16
+
 pub let nla_header_length : Int
+
+pub let nla_type_mask : UInt16
 
 pub let nlmsg_done : UInt16
 
@@ -40,19 +54,48 @@ pub(all) suberror CodecError {
   Truncated(context~ : String, offset~ : Int, needed~ : Int, available~ : Int)
   InvalidLength(context~ : String, length~ : UInt, minimum~ : Int)
   LengthTooLarge(context~ : String, length~ : UInt)
+  LengthExceedsLimit(context~ : String, length~ : Int, maximum~ : Int)
+  InvalidAttributeType(attribute_type~ : UInt16)
+  UnexpectedFieldLength(context~ : String, length~ : Int, expected~ : Int)
+  InvalidString(context~ : String)
 } derive(Eq, @debug.Debug)
 pub fn CodecError::equal(Self, Self) -> Bool
 pub fn CodecError::not_equal(Self, Self) -> Bool
 pub fn CodecError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub(all) struct ExtendedAck {
+  message : String?
+  offset : UInt?
+  cookie : Bytes?
+  missing_type : UInt?
+  missing_nest : UInt?
+  unknown_attributes : Array[NetlinkAttribute]
+} derive(Eq, @debug.Debug)
+pub fn ExtendedAck::equal(Self, Self) -> Bool
+pub fn ExtendedAck::not_equal(Self, Self) -> Bool
+pub fn ExtendedAck::to_repr(Self) -> @debug.Repr
+
 pub(all) struct NetlinkAttribute {
   attribute_type : UInt16
+  nested : Bool
+  network_byte_order : Bool
   payload : Bytes
 } derive(Eq, @debug.Debug)
 pub fn NetlinkAttribute::equal(Self, Self) -> Bool
 pub fn NetlinkAttribute::not_equal(Self, Self) -> Bool
 pub fn NetlinkAttribute::to_repr(Self) -> @debug.Repr
+
+pub(all) enum NetlinkControl {
+  Noop
+  Done(Int?)
+  Ack(NetlinkHeader)
+  KernelError(Int, NetlinkHeader)
+  Overrun
+} derive(Eq, @debug.Debug)
+pub fn NetlinkControl::equal(Self, Self) -> Bool
+pub fn NetlinkControl::not_equal(Self, Self) -> Bool
+pub fn NetlinkControl::to_repr(Self) -> @debug.Repr
 
 pub(all) struct NetlinkHeader {
   length : UInt

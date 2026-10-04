@@ -5,6 +5,15 @@ pub let nlmsg_header_length : Int = 16
 pub let nla_header_length : Int = 4
 
 ///|
+pub let nla_f_nested : UInt16 = 0x8000
+
+///|
+pub let nla_f_net_byteorder : UInt16 = 0x4000
+
+///|
+pub let nla_type_mask : UInt16 = 0x3fff
+
+///|
 pub let nlmsg_noop : UInt16 = 1
 
 ///|
@@ -52,6 +61,8 @@ pub extend NetlinkMessage with Eq::{equal, not_equal}
 #warnings("-implicit_impl_as_method")
 pub(all) struct NetlinkAttribute {
   attribute_type : UInt16
+  nested : Bool
+  network_byte_order : Bool
   payload : Bytes
 } derive(Debug, Eq)
 
@@ -60,6 +71,69 @@ pub extend NetlinkAttribute with Debug::{to_repr}
 
 ///|
 pub extend NetlinkAttribute with Eq::{equal, not_equal}
+
+///|
+fn decode_header_at(
+  data : BytesView,
+  offset : Int,
+) -> NetlinkHeader raise CodecError {
+  require_range(data, offset, nlmsg_header_length, "netlink header")
+  {
+    length: read_u32_le(data, offset),
+    message_type: read_u16_le(data, offset + 4),
+    flags: read_u16_le(data, offset + 6),
+    sequence: read_u32_le(data, offset + 8),
+    port_id: read_u32_le(data, offset + 12),
+  }
+}
+
+///|
+/// Encode one Netlink message and normalize its wire length from the payload.
+pub fn encode_message(message : NetlinkMessage) -> Bytes {
+  let message_length = nlmsg_header_length + message.payload.length()
+  let aligned_length = align4(message_length)
+  let buffer = FixedArray::make(aligned_length, b'\x00')
+  write_u32_le(buffer, 0, message_length.reinterpret_as_uint())
+  write_u16_le(buffer, 4, message.header.message_type)
+  write_u16_le(buffer, 6, message.header.flags)
+  write_u32_le(buffer, 8, message.header.sequence)
+  write_u32_le(buffer, 12, message.header.port_id)
+  for index, byte in message.payload {
+    buffer[nlmsg_header_length + index] = byte
+  }
+  Bytes::from_array(buffer[:])
+}
+
+///|
+/// Encode one Netlink attribute, preserving its two standard flag bits.
+pub fn encode_attribute(attribute : NetlinkAttribute) -> Bytes raise CodecError {
+  let attribute_length = nla_header_length + attribute.payload.length()
+  if attribute.attribute_type > nla_type_mask {
+    raise InvalidAttributeType(attribute_type=attribute.attribute_type)
+  }
+  if attribute_length > 0xffff {
+    raise LengthExceedsLimit(
+      context="attribute",
+      length=attribute_length,
+      maximum=0xffff,
+    )
+  }
+  let aligned_length = align4(attribute_length)
+  let buffer = FixedArray::make(aligned_length, b'\x00')
+  let mut raw_type = attribute.attribute_type
+  if attribute.nested {
+    raw_type = raw_type | nla_f_nested
+  }
+  if attribute.network_byte_order {
+    raw_type = raw_type | nla_f_net_byteorder
+  }
+  write_u16_le(buffer, 0, attribute_length.to_uint16())
+  write_u16_le(buffer, 2, raw_type)
+  for index, byte in attribute.payload {
+    buffer[nla_header_length + index] = byte
+  }
+  Bytes::from_array(buffer[:])
+}
 
 ///|
 /// Decode one or more aligned Netlink messages from a datagram.
@@ -101,13 +175,7 @@ pub fn decode_datagram(
     let payload_start = offset + nlmsg_header_length
     let payload_end = offset + message_length
     messages.push({
-      header: {
-        length: wire_length,
-        message_type: read_u16_le(data, offset + 4),
-        flags: read_u16_le(data, offset + 6),
-        sequence: read_u32_le(data, offset + 8),
-        port_id: read_u32_le(data, offset + 12),
-      },
+      header: decode_header_at(data, offset),
       payload: data[payload_start:payload_end].to_owned(),
     })
     let next = offset + align4(message_length)
@@ -161,8 +229,11 @@ pub fn decode_attributes(
         available=remaining,
       )
     }
+    let raw_type = read_u16_le(data, offset + 2)
     attributes.push({
-      attribute_type: read_u16_le(data, offset + 2),
+      attribute_type: raw_type & nla_type_mask,
+      nested: (raw_type & nla_f_nested) != 0,
+      network_byte_order: (raw_type & nla_f_net_byteorder) != 0,
       payload: data[offset + nla_header_length:offset + attribute_length].to_owned(),
     })
     let next = offset + align4(attribute_length)

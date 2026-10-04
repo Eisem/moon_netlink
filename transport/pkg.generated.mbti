@@ -3,11 +3,14 @@ package "eisem/moonnetlink/transport"
 
 import {
   "eisem/moonnetlink/core",
+  "eisem/moonnetlink/route",
+  "moonbitlang/async",
   "moonbitlang/async/raw_fd",
   "moonbitlang/core/debug",
 }
 
 // Values
+pub let route_monitor_groups : UInt
 
 // Errors
 pub(all) suberror TransportError {
@@ -18,13 +21,52 @@ pub(all) suberror TransportError {
   DatagramMayBeTruncated(capacity~ : Int)
   ShortWrite(expected~ : Int, actual~ : Int)
   KernelRejected(errno~ : Int)
+  KernelRejectedDetailed(errno~ : Int, original_header~ : @core.NetlinkHeader?, extack~ : @core.ExtendedAck)
+  EventStreamLost
   UnexpectedControl(message_type~ : UInt16)
+  InvalidRequestTimeout(timeout_ms~ : Int)
+  RequestTimedOut(timeout_ms~ : Int)
+  DumpInterrupted(sequence~ : UInt)
 } derive(Eq, @debug.Debug)
 pub fn TransportError::equal(Self, Self) -> Bool
 pub fn TransportError::not_equal(Self, Self) -> Bool
 pub fn TransportError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub struct RouteClient {
+  socket : RouteSocket
+  requests : @async.Mutex
+  request_timeout_ms : Int
+  mut next_sequence : UInt
+}
+pub async fn RouteClient::add_address(Self, @route.AddressSpec, mode? : @route.AddMode) -> Unit
+pub async fn RouteClient::add_route(Self, @route.RouteSpec, mode? : @route.AddMode) -> Unit
+pub async fn RouteClient::close(Self) -> Unit
+pub async fn RouteClient::delete_address(Self, @route.AddressSpec) -> Unit
+pub async fn RouteClient::delete_route(Self, @route.RouteSpec) -> Unit
+pub async fn RouteClient::get_addresses(Self) -> Array[@route.Address]
+pub async fn RouteClient::get_link_by_index(Self, Int) -> @route.Link
+pub async fn RouteClient::get_link_by_name(Self, String) -> @route.Link
+pub async fn RouteClient::get_links(Self) -> Array[@route.Link]
+pub async fn RouteClient::get_neighbors(Self) -> Array[@route.Neighbor]
+pub async fn RouteClient::get_routes(Self) -> Array[@route.Route]
+pub async fn RouteClient::open(receive_capacity? : Int, request_timeout_ms? : Int) -> Self
+pub async fn RouteClient::set_link_down(Self, Int) -> Unit
+pub async fn RouteClient::set_link_mtu(Self, Int, UInt) -> Unit
+pub async fn RouteClient::set_link_up(Self, Int) -> Unit
+
+pub struct RouteMonitor {
+  socket : RouteSocket
+  readers : @async.Mutex
+  buffer : FixedArray[Byte]
+  pending : Array[@route.RouteEvent]
+  mut next : Int
+  mut read_task : @async.Task[Int]?
+}
+pub fn RouteMonitor::close(Self) -> Unit
+pub async fn RouteMonitor::next_event(Self) -> @route.RouteEvent
+pub async fn RouteMonitor::open(groups? : UInt, receive_capacity? : Int) -> Self
+
 pub struct RouteSocket {
   source : @raw_fd.RawFd
   receive_capacity : Int
@@ -32,7 +74,9 @@ pub struct RouteSocket {
 }
 pub fn RouteSocket::close(Self) -> Unit
 pub async fn RouteSocket::open(groups? : UInt, receive_capacity? : Int) -> Self
+pub async fn RouteSocket::request_ack(Self, Bytes, UInt) -> Unit
 pub async fn RouteSocket::request_dump(Self, Bytes, UInt) -> Array[@core.NetlinkMessage]
+pub async fn RouteSocket::request_single(Self, Bytes, UInt, UInt16) -> @core.NetlinkMessage
 
 // Type aliases
 

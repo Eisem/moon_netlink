@@ -8,7 +8,16 @@ pub(all) suberror TransportError {
   DatagramMayBeTruncated(capacity~ : Int)
   ShortWrite(expected~ : Int, actual~ : Int)
   KernelRejected(errno~ : Int)
+  KernelRejectedDetailed(
+    errno~ : Int,
+    original_header~ : @core.NetlinkHeader?,
+    extack~ : @core.ExtendedAck
+  )
+  EventStreamLost
   UnexpectedControl(message_type~ : UInt16)
+  InvalidRequestTimeout(timeout_ms~ : Int)
+  RequestTimedOut(timeout_ms~ : Int)
+  DumpInterrupted(sequence~ : UInt)
 } derive(Debug, Eq)
 
 ///|
@@ -32,6 +41,13 @@ let default_receive_capacity : Int = 256 * 1024
 fn validate_receive_capacity(size : Int) -> Unit raise TransportError {
   if size < @core.nlmsg_header_length {
     raise InvalidReceiveCapacity(size~, minimum=@core.nlmsg_header_length)
+  }
+}
+
+///|
+fn validate_request_timeout(timeout_ms : Int) -> Unit raise TransportError {
+  if timeout_ms <= 0 {
+    raise InvalidRequestTimeout(timeout_ms~)
   }
 }
 
@@ -103,7 +119,7 @@ pub async fn RouteSocket::request_dump(
   if written != request.length() {
     raise TransportError::ShortWrite(expected=request.length(), actual=written)
   }
-  let result : Array[@core.NetlinkMessage] = []
+  let response = DumpResponse::new(sequence)
   let buffer = FixedArray::make(self.receive_capacity, b'\x00')
   for ;; {
     let count = self.source.read(buffer)
@@ -113,25 +129,81 @@ pub async fn RouteSocket::request_dump(
     validate_datagram_read(count, self.receive_capacity)
     let datagram = Bytes::from_array(buffer[:count])
     let messages = @core.decode_datagram(datagram)
+    if response.consume(messages) {
+      return response.messages
+    }
+  }
+}
+
+///|
+/// Send a point query and return its sequence-matched family response.
+/// Unlike a multipart dump, a single reply does not require NLMSG_DONE.
+/// Callers serialize access and supply a timeout, as for `request_dump`.
+pub async fn RouteSocket::request_single(
+  self : RouteSocket,
+  request : Bytes,
+  sequence : UInt,
+  response_type : UInt16,
+) -> @core.NetlinkMessage {
+  if self.closed {
+    raise TransportError::ReadClosed
+  }
+  let written = self.source.write(request)
+  if written != request.length() {
+    raise TransportError::ShortWrite(expected=request.length(), actual=written)
+  }
+  let buffer = FixedArray::make(self.receive_capacity, b'\x00')
+  for ;; {
+    let count = self.source.read(buffer)
+    if count == 0 {
+      raise TransportError::ReadClosed
+    }
+    validate_datagram_read(count, self.receive_capacity)
+    let messages = @core.decode_datagram(Bytes::from_array(buffer[:count]))
+    if decode_single_reply(messages, sequence, response_type) is Some(reply) {
+      return reply
+    }
+  }
+}
+
+///|
+/// Send one mutation request and wait for its sequence-matched ACK.
+///
+/// Family data and non-ACK control messages are rejected: mutation callers
+/// must never infer success merely because the socket produced some data.
+pub async fn RouteSocket::request_ack(
+  self : RouteSocket,
+  request : Bytes,
+  sequence : UInt,
+) -> Unit {
+  if self.closed {
+    raise TransportError::ReadClosed
+  }
+  let written = self.source.write(request)
+  if written != request.length() {
+    raise TransportError::ShortWrite(expected=request.length(), actual=written)
+  }
+  let buffer = FixedArray::make(self.receive_capacity, b'\x00')
+  for ;; {
+    let count = self.source.read(buffer)
+    if count == 0 {
+      raise TransportError::ReadClosed
+    }
+    validate_datagram_read(count, self.receive_capacity)
+    let messages = @core.decode_datagram(Bytes::from_array(buffer[:count]))
     for message in messages {
       if message.header.sequence != sequence {
         continue
       }
-      let message_type = message.header.message_type
-      if message_type == @core.nlmsg_done {
-        return result
-      } else if message_type == @core.nlmsg_error {
-        let errno = @core.read_i32_le(message.payload, 0)
-        if errno == 0 {
-          return result
-        }
-        raise TransportError::KernelRejected(errno=-errno)
-      } else if message_type == @core.nlmsg_noop {
-        ()
-      } else if message_type == @core.nlmsg_overrun {
-        raise TransportError::UnexpectedControl(message_type~)
-      } else {
-        result.push(message)
+      match @core.decode_control(message) {
+        Some(Ack(_)) => return
+        Some(KernelError(errno, _)) => reject_kernel_message(message, errno)
+        Some(Done(Some(errno))) if errno != 0 =>
+          reject_kernel_message(message, if errno < 0 { -errno } else { errno })
+        _ =>
+          raise TransportError::UnexpectedControl(
+            message_type=message.header.message_type,
+          )
       }
     }
   }

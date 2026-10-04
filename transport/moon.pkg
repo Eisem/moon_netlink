@@ -1,14 +1,11 @@
 import {
   "eisem/moonnetlink/core",
+  "eisem/moonnetlink/route",
+  "moonbitlang/async",
   "moonbitlang/async/raw_fd",
   "moonbitlang/async/os_error",
   "moonbitlang/async/types",
 }
-
-import {
-  "eisem/moonnetlink/route",
-  "moonbitlang/async",
-} for "wbtest"
 
 supported_targets = "native"
 

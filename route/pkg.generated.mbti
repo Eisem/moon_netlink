@@ -7,28 +7,292 @@ import {
 }
 
 // Values
+pub fn decode_address(@core.NetlinkMessage) -> Address raise @core.CodecError
+
+pub fn decode_addresses(ArrayView[@core.NetlinkMessage]) -> Array[Address] raise @core.CodecError
+
+pub fn decode_event(@core.NetlinkMessage) -> RouteEvent raise @core.CodecError
+
 pub fn decode_link(@core.NetlinkMessage) -> Link raise @core.CodecError
 
 pub fn decode_links(ArrayView[@core.NetlinkMessage]) -> Array[Link] raise @core.CodecError
 
+pub fn decode_neighbor(@core.NetlinkMessage) -> Neighbor raise @core.CodecError
+
+pub fn decode_neighbors(ArrayView[@core.NetlinkMessage]) -> Array[Neighbor] raise @core.CodecError
+
+pub fn decode_route(@core.NetlinkMessage) -> Route raise @core.CodecError
+
+pub fn decode_routes(ArrayView[@core.NetlinkMessage]) -> Array[Route] raise @core.CodecError
+
+pub fn encode_add_address(UInt, AddressSpec, mode? : AddMode) -> Bytes raise
+
+pub fn encode_add_route(UInt, RouteSpec, mode? : AddMode) -> Bytes raise
+
+pub fn encode_delete_address(UInt, AddressSpec) -> Bytes raise
+
+pub fn encode_delete_route(UInt, RouteSpec) -> Bytes raise
+
+pub fn encode_get_addresses(UInt) -> Bytes
+
+pub fn encode_get_link_by_index(UInt, Int) -> Bytes raise LinkQueryError
+
+pub fn encode_get_link_by_name(UInt, String) -> Bytes raise LinkQueryError
+
 pub fn encode_get_links(UInt) -> Bytes
+
+pub fn encode_get_neighbors(UInt) -> Bytes
+
+pub fn encode_get_routes(UInt) -> Bytes
+
+pub fn encode_set_link_mtu(UInt, Int, UInt) -> Bytes raise
+
+pub fn encode_set_link_state(UInt, Int, Bool) -> Bytes raise LinkQueryError
+
+pub let rtm_getaddr : UInt16
 
 pub let rtm_getlink : UInt16
 
+pub let rtm_getneigh : UInt16
+
+pub let rtm_getroute : UInt16
+
+pub let rtm_newaddr : UInt16
+
 pub let rtm_newlink : UInt16
 
+pub let rtm_newneigh : UInt16
+
+pub let rtm_newroute : UInt16
+
 // Errors
+pub(all) suberror AddressParseError {
+  InvalidIpv4(input~ : String)
+  InvalidIpv6(input~ : String)
+  InvalidMac(input~ : String)
+} derive(Eq, @debug.Debug)
+pub fn AddressParseError::equal(Self, Self) -> Bool
+pub fn AddressParseError::not_equal(Self, Self) -> Bool
+pub fn AddressParseError::to_repr(Self) -> @debug.Repr
+
+pub(all) suberror LinkQueryError {
+  InvalidInterfaceIndex(index~ : Int)
+  EmptyInterfaceName
+  InterfaceNameContainsNul
+  InterfaceNameInvalidUtf16
+  InterfaceNameTooLong(encoded_length~ : Int, maximum~ : Int)
+} derive(Eq, @debug.Debug)
+pub fn LinkQueryError::equal(Self, Self) -> Bool
+pub fn LinkQueryError::not_equal(Self, Self) -> Bool
+pub fn LinkQueryError::to_repr(Self) -> @debug.Repr
+
+pub(all) suberror MutationError {
+  InvalidInterfaceIndex(index~ : Int)
+  InvalidMtu(mtu~ : UInt)
+  InvalidPrefix(prefix_length~ : Byte, maximum~ : Int)
+  NonCanonicalDestination
+  GatewayFamilyMismatch
+  InvalidTable(table~ : UInt)
+} derive(Eq, @debug.Debug)
+pub fn MutationError::equal(Self, Self) -> Bool
+pub fn MutationError::not_equal(Self, Self) -> Bool
+pub fn MutationError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub(all) enum AddMode {
+  Exclusive
+  Replace
+} derive(Eq, @debug.Debug)
+pub fn AddMode::equal(Self, Self) -> Bool
+pub fn AddMode::not_equal(Self, Self) -> Bool
+pub fn AddMode::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Address {
+  family : AddressFamily
+  interface_index : UInt
+  interface_name : String?
+  prefix_length : Byte
+  scope : Byte
+  local_address : IpAddress?
+  address : IpAddress?
+  label : String?
+  flags : UInt
+  unknown_attributes : Array[@core.NetlinkAttribute]
+} derive(Eq, @debug.Debug)
+pub fn Address::equal(Self, Self) -> Bool
+pub fn Address::not_equal(Self, Self) -> Bool
+pub fn Address::to_repr(Self) -> @debug.Repr
+
+pub(all) enum AddressFamily {
+  Ipv4
+  Ipv6
+  Other(Byte)
+} derive(Eq, @debug.Debug)
+pub fn AddressFamily::equal(Self, Self) -> Bool
+pub fn AddressFamily::not_equal(Self, Self) -> Bool
+pub fn AddressFamily::to_repr(Self) -> @debug.Repr
+
+pub(all) struct AddressSpec {
+  interface_index : Int
+  address : IpAddress
+  prefix_length : Byte
+  scope : Byte
+} derive(Eq, @debug.Debug)
+pub fn AddressSpec::equal(Self, Self) -> Bool
+pub fn AddressSpec::not_equal(Self, Self) -> Bool
+pub fn AddressSpec::to_repr(Self) -> @debug.Repr
+
+pub(all) enum IpAddress {
+  V4(Ipv4Address)
+  V6(Ipv6Address)
+} derive(Eq, @debug.Debug)
+pub fn IpAddress::equal(Self, Self) -> Bool
+pub fn IpAddress::not_equal(Self, Self) -> Bool
+pub fn IpAddress::parse(String) -> Self raise AddressParseError
+pub fn IpAddress::to_bytes(Self) -> Bytes
+pub fn IpAddress::to_repr(Self) -> @debug.Repr
+pub fn IpAddress::to_string(Self) -> String
+
+pub struct Ipv4Address {
+  bytes : Bytes
+} derive(Eq, @debug.Debug)
+pub fn Ipv4Address::equal(Self, Self) -> Bool
+pub fn Ipv4Address::not_equal(Self, Self) -> Bool
+pub fn Ipv4Address::parse(String) -> Self raise AddressParseError
+pub fn Ipv4Address::to_repr(Self) -> @debug.Repr
+pub fn Ipv4Address::to_string(Self) -> String
+
+pub struct Ipv6Address {
+  bytes : Bytes
+} derive(Eq, @debug.Debug)
+pub fn Ipv6Address::equal(Self, Self) -> Bool
+pub fn Ipv6Address::not_equal(Self, Self) -> Bool
+pub fn Ipv6Address::parse(String) -> Self raise AddressParseError
+pub fn Ipv6Address::to_repr(Self) -> @debug.Repr
+pub fn Ipv6Address::to_string(Self) -> String
+
 pub(all) struct Link {
   index : Int
   name : String?
+  kind : String?
+  mtu : UInt?
+  mac : MacAddress?
   flags : UInt
+  operational_state : LinkOperationalState?
+  master_index : Int?
   unknown_attributes : Array[@core.NetlinkAttribute]
 } derive(Eq, @debug.Debug)
 pub fn Link::equal(Self, Self) -> Bool
 pub fn Link::not_equal(Self, Self) -> Bool
 pub fn Link::to_repr(Self) -> @debug.Repr
+
+pub(all) enum LinkOperationalState {
+  Unknown
+  NotPresent
+  Down
+  LowerLayerDown
+  Testing
+  Dormant
+  Up
+  Other(Byte)
+} derive(Eq, @debug.Debug)
+pub fn LinkOperationalState::equal(Self, Self) -> Bool
+pub fn LinkOperationalState::not_equal(Self, Self) -> Bool
+pub fn LinkOperationalState::to_repr(Self) -> @debug.Repr
+
+pub struct MacAddress {
+  bytes : Bytes
+} derive(Eq, @debug.Debug)
+pub fn MacAddress::equal(Self, Self) -> Bool
+pub fn MacAddress::not_equal(Self, Self) -> Bool
+pub fn MacAddress::parse(String) -> Self raise AddressParseError
+pub fn MacAddress::to_bytes(Self) -> Bytes
+pub fn MacAddress::to_repr(Self) -> @debug.Repr
+pub fn MacAddress::to_string(Self) -> String
+
+pub(all) struct Neighbor {
+  family : AddressFamily
+  interface_index : Int
+  interface_name : String?
+  destination : IpAddress?
+  link_layer_address : MacAddress?
+  state : NeighborState
+  flags : Byte
+  neighbor_type : Byte
+  probes : UInt?
+  unknown_attributes : Array[@core.NetlinkAttribute]
+} derive(Eq, @debug.Debug)
+pub fn Neighbor::equal(Self, Self) -> Bool
+pub fn Neighbor::not_equal(Self, Self) -> Bool
+pub fn Neighbor::to_repr(Self) -> @debug.Repr
+
+pub(all) enum NeighborState {
+  None
+  Incomplete
+  Reachable
+  Stale
+  Delay
+  Probe
+  Failed
+  NoArp
+  Permanent
+  Other(UInt16)
+} derive(Eq, @debug.Debug)
+pub fn NeighborState::equal(Self, Self) -> Bool
+pub fn NeighborState::not_equal(Self, Self) -> Bool
+pub fn NeighborState::to_repr(Self) -> @debug.Repr
+
+pub(all) struct Route {
+  family : AddressFamily
+  destination : IpAddress?
+  destination_prefix_length : Byte
+  source : IpAddress?
+  source_prefix_length : Byte
+  gateway : IpAddress?
+  preferred_source : IpAddress?
+  input_interface : UInt?
+  output_interface : UInt?
+  table : UInt
+  priority : UInt?
+  protocol : Byte
+  scope : Byte
+  route_type : Byte
+  tos : Byte
+  flags : UInt
+  unknown_attributes : Array[@core.NetlinkAttribute]
+} derive(Eq, @debug.Debug)
+pub fn Route::equal(Self, Self) -> Bool
+pub fn Route::not_equal(Self, Self) -> Bool
+pub fn Route::to_repr(Self) -> @debug.Repr
+
+pub(all) enum RouteEvent {
+  LinkChanged(Link)
+  LinkDeleted(Link)
+  AddressAdded(Address)
+  AddressDeleted(Address)
+  RouteAdded(Route)
+  RouteDeleted(Route)
+  NeighborChanged(Neighbor)
+  NeighborDeleted(Neighbor)
+  Unknown(@core.NetlinkMessage)
+} derive(Eq, @debug.Debug)
+pub fn RouteEvent::equal(Self, Self) -> Bool
+pub fn RouteEvent::not_equal(Self, Self) -> Bool
+pub fn RouteEvent::to_repr(Self) -> @debug.Repr
+
+pub(all) struct RouteSpec {
+  destination : IpAddress
+  prefix_length : Byte
+  gateway : IpAddress?
+  output_interface : Int
+  table : UInt
+  priority : UInt?
+  protocol : Byte
+  scope : Byte
+} derive(Eq, @debug.Debug)
+pub fn RouteSpec::equal(Self, Self) -> Bool
+pub fn RouteSpec::not_equal(Self, Self) -> Bool
+pub fn RouteSpec::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

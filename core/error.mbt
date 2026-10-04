@@ -6,6 +6,10 @@ pub(all) suberror CodecError {
   Truncated(context~ : String, offset~ : Int, needed~ : Int, available~ : Int)
   InvalidLength(context~ : String, length~ : UInt, minimum~ : Int)
   LengthTooLarge(context~ : String, length~ : UInt)
+  LengthExceedsLimit(context~ : String, length~ : Int, maximum~ : Int)
+  InvalidAttributeType(attribute_type~ : UInt16)
+  UnexpectedFieldLength(context~ : String, length~ : Int, expected~ : Int)
+  InvalidString(context~ : String)
 } derive(Debug, Eq)
 
 ///|

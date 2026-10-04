@@ -886,18 +886,39 @@ moon run --target native examples/inspect_links
 
 ### Phase 1：通用 codec（2026-10-05 ～ 2026-10-08）
 
-- [ ] 建立 `core` 包；
-- [ ] 实现 host/Linux ABI 整数读写辅助；
-- [ ] 实现 `NLMSG_ALIGN` / `NLA_ALIGN`；
-- [ ] 实现 header encode/decode；
-- [ ] 实现 attribute encode/decode；
-- [ ] 实现 datagram 多消息解析；
-- [ ] 实现 ACK/error/DONE 控制消息；
-- [ ] 定义结构化 `CodecError`；
-- [ ] 保留未知属性；
-- [ ] 增加合法、截断、错误长度和 roundtrip 测试；
-- [ ] 收集第一批真实 fixtures；
-- [ ] 生成并审查 `core/pkg.generated.mbti`。
+状态：2026-10-03 提前完成；codec、控制消息、真实 multipart fixture、测试与接口审查均已通过。
+
+- [x] 建立 `core` 包；
+- [x] 实现 host/Linux ABI 整数读写辅助；
+- [x] 实现 `NLMSG_ALIGN` / `NLA_ALIGN`；
+- [x] 实现 header encode/decode；
+- [x] 实现 attribute encode/decode；
+- [x] 实现 datagram 多消息解析；
+- [x] 实现 ACK/error/DONE 控制消息；
+- [x] 定义结构化 `CodecError`；
+- [x] 保留未知属性；
+- [x] 增加合法、截断、错误长度和 roundtrip 测试；
+- [x] 收集第一批真实 fixtures；
+- [x] 生成并审查 `core/pkg.generated.mbti`。
+
+2026-10-03 codec/Link/Address/Route 纵向切片验证：Windows native 运行 35 个测试全部通过；
+WSL2/Linux native 运行 36 个测试全部通过（包含真实 Netlink 截断测试），随后只读执行
+`examples/inspect_links`，成功得到 `lo` 与 `eth0`。验证命令：
+
+```text
+moon check --target native --warn-list +73
+moon test --target native
+moon info
+moon run --target native examples/inspect_links
+```
+
+2026-10-03 从 Linux 6.6.87.2-microsoft-standard-WSL2 直接通过 `AF_NETLINK`
+抓取 `RTM_GETLINK` 响应，固化了去标识化的 `lo` 数据消息及同类 dump 的真实
+`NLMSG_DONE`。fixture 不包含主机地址、主机名或非 loopback MAC，并覆盖类型化 Link 解码、
+multipart 完成消息和语义 roundtrip。
+
+本切片明确未包含 extack attribute 解码和通用请求超时；这些任务分别留在 Phase 3 和
+`RouteClient` 阶段。
 
 退出条件：
 
@@ -907,19 +928,58 @@ moon run --target native examples/inspect_links
 
 ### Phase 2：类型化 RTNetlink 查询（2026-10-09 ～ 2026-10-13）
 
-- [ ] 建立 `route` 包及公共类型；
-- [ ] Link query + decode；
-- [ ] Address query + decode；
-- [ ] Route query + decode；
-- [ ] Neighbor query + decode；
-- [ ] 实现严格 IP/MAC parser 与 formatter；
-- [ ] 建立 `transport.RouteClient`；
-- [ ] mutex 串行 request；
-- [ ] sequence、multipart、ACK、timeout；
-- [ ] CLI `link/address/route/neighbor show`；
-- [ ] JSON 输出与稳定排序；
-- [ ] 与 `ip -j` 做第一次差分；
-- [ ] 每类对象添加 fixtures 和黑盒测试。
+- [x] 建立 `route` 包及 Link/Address 公共类型；
+- [x] Link query all/by index/by name + decode（index/name/kind/MTU/MAC/flags/operstate/master/未知属性）；
+- [x] Address query + decode（接口名需由后续 `RouteClient` 与 Link 数据关联）；
+- [x] Route query + decode（接口名需由后续 `RouteClient` 与 Link 数据关联）；
+- [x] Neighbor query + decode；
+- [x] 实现严格 IP/MAC parser 与 formatter；
+- [x] 建立 `transport.RouteClient`；
+- [x] mutex 串行 request；
+- [x] sequence、multipart、ACK、timeout；
+- [x] CLI `link/address/route/neighbor show`；
+- [x] JSON 输出与稳定排序；
+- [x] 与 `ip -j` 做第一次差分；
+- [x] 每类对象添加 fixtures 和黑盒测试。
+
+2026-10-03 Phase 2 进展：Link 已支持 all/by-index/by-name 查询并严格校验名称；Address
+已支持全 family dump、IPv4/IPv6 固定宽度解码、label/flags/未知属性；Route 已支持全
+family/table dump、前缀、gateway、接口、table/priority 和未知属性；Neighbor 已支持全 family
+dump、目标 IP、MAC、NUD state、flags/type/probes 与未知属性。严格文本层覆盖 IPv4、IPv6
+（含 `::` 和尾部嵌入 IPv4）及六字节 MAC，并提供规范化 formatter。真实 Linux 只读示例
+`examples/inspect_links`、`examples/inspect_addresses`、`examples/inspect_routes` 与
+`examples/inspect_neighbors` 均通过。`RouteClient` 已拥有单一 socket、自动分配非零 sequence，
+以 async mutex 串行查询/关闭，并在同一临界区内为 Address/Neighbor 关联接口名。timeout 与
+取消后的 socket 复用已通过真实 Linux 测试：sequence 不匹配的请求超时后，同一 fd 可立即
+完成新 dump；multipart 持续收集到 DONE，ACK 不会提前结束。`cmd/moonnet` 已提供四类
+`show [--json]`，人类输出和 JSON 均按类型化键稳定排序，缺失字段输出 `null`。
+
+2026-10-04 已完成审查发现的四类修复：`RouteClient::get_link_by_index` /
+`get_link_by_name` 使用单条响应路径，收到匹配的 `RTM_NEWLINK` 即完成，不等待 DONE；
+输入错误、内核拒绝及后续 socket 复用均有真实 Linux 测试。Link 根据 `ifi_type`
+区分 Ethernet/loopback 的六字节 MAC 与其他硬件地址；IPIP、InfiniBand 等
+`IFLA_ADDRESS` 保留在未知属性中，避免一个合法非 Ethernet 接口使整个 dump 失败。
+multipart 状态机跨 datagram 记录 `NLM_F_DUMP_INTR`，读取到 DONE 后返回
+`TransportError::DumpInterrupted`，不返回部分状态，也不自动重试；中断发生在 body 或
+DONE 的失败路径均有 fixture 测试。Route 排序补齐源前缀长度和 preferred source，
+通过逐个改变输出字段、反转输入顺序的回归测试。
+
+本轮验证：Windows native 62/62、WSL2/Linux native 67/67 测试通过。
+新增 `.ci/validate-queries.sh` 在自动销毁的 user/network namespace 中创建 IPIP/veth，
+执行 6 个真实 transport 测试、四类 CLI 查询及 `ip -j` 差分；同时保留原有只读差分与
+隔离 Link DOWN/UP 验证。差分明确区分 MAC 与非 Ethernet 地址，并规范化 operstate 拼写。
+公共接口新增两个类型化点查方法、低层 `request_single` 和 `DumpInterrupted`；
+Link 的公共字段保持兼容。验证命令：
+
+```text
+moon check --target native --warn-list +73
+moon test --target native
+moon fmt
+moon info --target native
+bash .ci/validate-queries.sh
+python3 .ci/diff_ip_json.py
+bash .ci/validate-link-state.sh
+```
 
 退出条件：
 
@@ -929,19 +989,61 @@ moon run --target native examples/inspect_links
 
 ### Phase 3：修改与事件监听（2026-10-14 ～ 2026-10-17）
 
-- [ ] Link UP/DOWN；
-- [ ] Link MTU；
-- [ ] Address add/delete；
-- [ ] Route add/delete；
-- [ ] 明确 add 的 create/exclusive/replace flags；
-- [ ] 解析 kernel errno 和 extack；
-- [ ] 建立独立 `RouteMonitor`；
-- [ ] 订阅 Link/Address/Route/Neighbor groups；
-- [ ] 类型化事件；
-- [ ] CLI `watch --jsonl`；
-- [ ] namespace E2E；
-- [ ] 监控事件 E2E；
-- [ ] 所有 mutation 先在隔离 namespace 验证。
+- [x] Link UP/DOWN；
+- [x] Link MTU；
+- [x] Address add/delete；
+- [x] Route add/delete；
+- [x] 明确 add 的 create/exclusive/replace flags；
+- [x] 解析 kernel errno 和 extack；
+- [x] 建立独立 `RouteMonitor`；
+- [x] 订阅 Link/Address/Route/Neighbor groups；
+- [x] 类型化事件；
+- [x] CLI `watch --jsonl`；
+- [x] namespace E2E；
+- [x] 监控事件 E2E；
+- [x] 所有 mutation 先在隔离 namespace 验证。
+
+2026-10-04 完成 Phase 3 纵向切片。`route` 新增纯编码的 `AddressSpec`、
+`RouteSpec`、`AddMode` 和 `MutationError`；`transport.RouteClient` 新增 MTU、
+IPv4/IPv6 地址与 unicast 路由增删方法，全部复用 mutex、sequence、ACK 与 timeout。
+add 默认 `Exclusive`（0x0605），显式 `Replace`（0x0505）；拒绝非法接口、前缀、
+目的地址 host bits、table 和 gateway family，未知属性仍保留。当前修改子集不包含
+peer address、multipath、rule、source-specific route 或 onlink flags。
+
+`core.ExtendedAck` 解析 capped/uncapped `NLMSG_ERROR`、成功 ACK 警告和 DONE
+诊断，保留文本、offset、cookie、missing fields 与未知 TLV。内核拒绝保留正数
+errno；有 TLV 时返回 `KernelRejectedDetailed`，含原请求 header（DONE 时为 None）
+和结构化诊断。畸形长度、回显请求越界、UTF-8/NUL 和整数长度都有失败测试。
+
+独立 `RouteMonitor` 默认订阅 Link、Neighbor、IPv4/IPv6 Address/Route，输出类型化
+NEW/DEL 事件，按收到顺序保留批量 datagram；整包校验后才入队。ENOBUFS/OVERRUN
+显式报告 `EventStreamLost`，读满缓冲及 codec 错误均不被吞掉。取消后可再次读取；
+关闭会主动取消 pending read 并释放 fd，避免仅关闭 RawFd 不能唤醒等待任务的问题。
+`watch [filter] --jsonl` 逐行立即输出 `{event, object}`，订阅完成在 stderr 发出
+ready 信号；Address/Neighbor 事件保留 ifindex，interface_name 为 null。
+
+`.ci/validate-mutations.sh` 在自动销毁的 `unshare -Urn` 中创建 veth，由
+`examples/configure_veth` 配置 MTU 1400、UP、IPv4/IPv6 地址和 table 1000 路由，
+验证重复 exclusive 添加返回 EEXIST、replace 改变网关、删除恢复 MTU 1500/DOWN。
+并行 all/neighbor 两个 monitor 验证四类对象、IPv4/IPv6 新增删除与过滤；直接
+`ip -j` 验证及四类 dump 差分均通过。无效网关实际返回 errno 101 和
+`Nexthop has invalid gateway` extack；失败后同一 client 仍可查询。测试进程在
+finally 中按进程组终止，namespace 不触及宿主接口。此处验证平台为 WSL2 Linux
+6.6.87.2；SDK mutation 直接执行，Phase 4 的默认 dry-run 与关键资源保护仍未实现。
+
+最终验证：Windows native 75/75、Linux native 82/82，隔离 live transport 8/8；
+公共 `.mbti` 已由 `moon info` 更新并审查，文档和 README 同步。命令：
+
+```text
+moon check --target native --warn-list +73
+moon test --target native
+moon fmt --check
+moon info --target native
+bash .ci/validate-queries.sh
+bash .ci/validate-link-state.sh
+bash .ci/validate-mutations.sh
+git diff --check
+```
 
 退出条件：
 
