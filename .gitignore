@@ -1,8 +1,34 @@
+# Rebuildable MoonBit output and downloaded dependencies.
 /target/
 /_build/
 /.mooncakes/
+
+# Native compiler/linker output.
 *.o
 *.a
 *.exe
+*.obj
+*.lib
+*.exp
+*.pdb
+*.dll
+*.so
+*.dylib
+
+# Local Python caches and temporary diagnostics.
+__pycache__/
+*.py[cod]
+*.log
+*.tmp
+
+# Local credentials and agent state (never part of the source distribution).
+/.env
+/.env.*
+!/.env.example
+/.codex/
+/.agents/
+/.aws/
+
+# Local contest reference material; TODO.md contains the relevant requirements.
 /MoonBit 黑客松大赛章程/
 

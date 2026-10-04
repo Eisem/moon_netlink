@@ -1,0 +1,2 @@
+# Preserve Linux-compatible scripts and identical text on Windows/Linux.
+* text=auto eol=lf
