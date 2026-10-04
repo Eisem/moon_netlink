@@ -14,6 +14,7 @@
 | `cmd/moonnet/`、`examples/` | 是 | 查询、JSONL 监听及隔离修改示例 |
 | `.ci/*.sh`、`.ci/*.py` | 是 | 可复现的隔离 namespace 验证与 `ip -j` 差分脚本 |
 | `README.md`、`docs/`、`LICENSE` | 是 | 使用方式、公开实现进度、协议和安全约定、许可证 |
+| `demo/` | 是 | 固定 desired 配置、隔离演示入口和带断言的公共 CLI 演示 |
 | `.gitignore`、`.gitattributes` | 是 | 提交边界与跨平台 LF 换行规则 |
 | `_build/`、`target/` | 否 | 可重新生成的构建、测试和文档产物 |
 | `.mooncakes/` | 否 | 通过 `moon update` 下载的依赖；版本由 `moon.mod` 记录 |
