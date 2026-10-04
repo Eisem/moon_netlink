@@ -105,15 +105,16 @@ Direct SDK mutations remain the caller's responsibility. Use
 `bash .ci/validate-apply.sh` to demonstrate confirmed apply in a temporary
 namespace. Recovery is best-effort and does not provide atomic transactions.
 
-## Reproduce the declarative workflow
+## Run isolated demonstrations
 
 ```sh
-bash demo/reconcile.sh
+bash demo/run.sh
 ```
 
-This isolated demo shows the initial snapshot, dry-run, explicit apply, fresh
-verification, `ip -j` comparison and an empty second plan using a fixed desired
-file. See [demo prerequisites and expected output](docs/demo.md).
+This entry demonstrates SDK container initialization, snapshot/plan/apply,
+typed monitoring, protected refusal and actual failure recovery. It verifies
+fresh observations, `ip -j` comparison and an empty second plan using fixed
+desired files. See [prerequisites, commands and expected output](docs/demo.md).
 
 ## License
 

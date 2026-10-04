@@ -10,6 +10,6 @@ test "$(readlink /proc/self/ns/net)" != "$MOONNETLINK_DEMO_PARENT_NETNS"
 ip link set lo up
 ip link add testveth type veth peer name testpeer
 ip link set testpeer up
-python3 demo/reconcile.py
+python3 -u demo/reconcile.py
 NAMESPACE
 echo 'Disposable namespace released; demo finished.'

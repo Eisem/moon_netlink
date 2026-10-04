@@ -1,5 +1,18 @@
 # Reproducible demonstrations
 
+One entry runs every scenario and an invalid-schema refusal:
+
+```sh
+moon update
+bash demo/run.sh
+```
+
+Select `container`, `reconcile`, `monitor`, `failure` or `invalid` as its optional
+argument to run one scenario. Unknown arguments exit 2. The complete run exits
+zero only if successful operations, expected nonzero CLI failures, observations
+and cleanup assertions all pass. Output appears as each stage completes and can
+be used directly for a recorded presentation.
+
 Run on Linux with MoonBit's native toolchain, a C compiler, Python 3 and
 iproute2. The kernel must permit `unshare -Urn` (user and network namespaces).
 Each wrapper checks that its network namespace differs from the caller's and
