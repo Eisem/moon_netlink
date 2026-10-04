@@ -81,3 +81,4 @@ deletions are protected. It recomputes protection even if callers edit the
 display marker. Explicit dangerous permits those resources; stale/missing
 interface indices and invalid SDK specs still fail. The future executor and
 CLI must reuse this check. Concurrent changes after observation remain possible.
+The read-only `plan` and unconfirmed `apply` CLI reuse this validation.

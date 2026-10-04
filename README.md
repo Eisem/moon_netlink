@@ -9,8 +9,8 @@ and typed multicast events. Protocol encoding and decoding are implemented
 in MoonBit; the C shim only opens and transfers the Linux socket. SDK queries
 and mutations do not invoke `ip`. The state package provides owned snapshots,
 strict desired configuration parsing, scoped differences and deterministic
-plans. Applying plans and enforcing critical-resource protections remain
-unfinished tasks.
+plans. The planning CLI defaults to dry-run and checks critical-resource
+protections. Confirmed execution of plans remains unfinished.
 
 Source files to commit and local files to exclude are listed in
 [docs/repository.md](./docs/repository.md).
@@ -49,6 +49,8 @@ moon run --target native cmd/moonnet -- route show
 moon run --target native cmd/moonnet -- neighbor show --json
 moon run --target native cmd/moonnet -- watch all --jsonl
 moon run --target native cmd/moonnet -- snapshot
+moon run --target native cmd/moonnet -- plan desired.json --json
+moon run --target native cmd/moonnet -- apply desired.json --json  # dry-run
 ```
 
 All four commands sort their output deterministically. JSON uses canonical
@@ -94,8 +96,9 @@ are cleaned up on success or failure. No host interface is modified.
 
 The example requires an explicit `--yes`; use it only on a disposable interface
 inside a temporary namespace. The SDK applies mutations directly. Default
-dry-run and loopback/default-route protections belong to the planned state
-engine and are not implemented yet.
+dry-run and loopback/default-route checks are available in the planning CLI;
+confirmed plan execution is not available yet. Direct SDK mutations remain
+the caller's responsibility.
 
 ## License
 

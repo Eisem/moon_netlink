@@ -24,6 +24,8 @@ fn usage() -> String {
     #|  moonnet neighbor show [--json]
     #|  moonnet watch [link|address|route|neighbor|all] [--jsonl]
     #|  moonnet snapshot
+    #|  moonnet plan desired.json [--json] [--dangerous]
+    #|  moonnet apply desired.json [--json] [--dangerous]  (dry-run)
   )
 }
 
@@ -48,6 +50,11 @@ fn parse_cli_args(args : ArrayView[String]) -> CliOptions? {
 ///|
 async fn run_cli() -> Unit {
   let args = @env.args()
+  if args.length() >= 2 && (args[1] == "plan" || args[1] == "apply") {
+    guard parse_plan_args(args) is Some(options) else { fail(usage()) }
+    run_plan_cli(options)
+    return
+  }
   if args.length() == 2 && args[1] == "snapshot" {
     print_snapshot()
     return

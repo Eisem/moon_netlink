@@ -3,6 +3,8 @@ import {
   "eisem/moonnetlink/transport",
   "eisem/moonnetlink/state",
   "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/io",
   "moonbitlang/async/stdio",
   "moonbitlang/core/env",
   "moonbitlang/core/json",

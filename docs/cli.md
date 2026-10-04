@@ -61,3 +61,19 @@ Kernel failures display errno and available extack text/offset on stderr.
 Event loss displays a request to query a fresh snapshot and exits nonzero;
 the CLI does not reconnect silently. Monitor buffering and recovery rules are
 documented in [transport.md](transport.md).
+
+## Plan and unconfirmed apply
+
+```text
+moonnet plan desired.json [--json] [--dangerous]
+moonnet apply desired.json [--json] [--dangerous]
+```
+
+Both commands currently perform the same read-only planning workflow. `apply`
+without confirmation never mutates; `--yes` is rejected until the executor is
+available. A regular UTF-8 configuration file is read with a 1 MiB limit before
+opening a route socket. Schema and SDK validation errors remain structured.
+Planning uses a fresh snapshot and shared safety validation. Loopback/default
+route changes require explicit `--dangerous`, which permits review but does not
+execute them. JSON is the version-1 Plan shape; human output lists every exact
+operation, reason and danger marker. Duplicate or unknown flags fail.
