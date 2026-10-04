@@ -53,6 +53,7 @@ bash .ci/validate-mutations.sh
 bash .ci/validate-plan.sh
 bash .ci/validate-apply.sh
 bash .ci/validate-idempotence.sh
+bash .ci/validate-failures.sh
 ```
 
 新增源码应明确加入暂存区，再检查暂存清单。不要用 `git add -f` 将被忽略的本地文件

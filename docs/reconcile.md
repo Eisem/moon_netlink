@@ -44,3 +44,11 @@ also converges, while undeclared addresses and routes remain present.
 Unmanaged-route comparison retains every field and flag except `linkdown`:
 changing one veth endpoint's UP state changes peer carrier, so this marker is
 expected to change while the peer's configured route remains unchanged.
+
+`bash .ci/validate-failures.sh` proves conflicting intent and default-route
+protection reject before any write. It then deletes an old address/route,
+changes MTU/UP and adds new resources before an unreachable gateway triggers
+kernel errno 101. The CLI must report completed/skipped operations, compensate
+in reverse, restore the supported original configuration, and show the final
+desired state remains unmet. Both JSON and human failures exit nonzero. Separate
+backend tests prove compensation errors remain visible and do not hide the cause.
