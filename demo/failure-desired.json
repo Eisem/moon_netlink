@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "links": [
+    {"name": "testveth", "ensure": "present", "up": true, "mtu": 1400}
+  ],
+  "addresses": [
+    {"interface": "testveth", "ensure": "present", "address": "192.0.2.10", "prefix_length": 24},
+    {"interface": "testveth", "ensure": "present", "address": "2001:db8:10::10", "prefix_length": 64}
+  ],
+  "routes": [
+    {"interface": "testveth", "ensure": "present", "destination": "198.51.100.0", "prefix_length": 24, "table": 1000, "priority": 42},
+    {"interface": "testveth", "ensure": "present", "destination": "198.51.200.0", "prefix_length": 24, "gateway": "198.18.0.1", "table": 1000, "priority": 43},
+    {"interface": "testveth", "ensure": "present", "destination": "2001:db8:20::", "prefix_length": 64, "table": 1000, "priority": 44}
+  ]
+}

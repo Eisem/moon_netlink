@@ -37,3 +37,22 @@ can also vary during IPv6 duplicate-address detection.
 This workflow demonstrates supported managed fields and fresh observation.
 It does not make kernel mutations atomic or reproduce every kernel metadata
 field; see [reconciliation limits](reconcile.md).
+
+## Protection and a controlled mid-plan failure
+
+```sh
+bash demo/failure.sh
+```
+
+First, a confirmed loopback change must be rejected before writing; `lo` stays
+UP. The fixed [failure configuration](../demo/failure-desired.json) then changes
+MTU/UP, adds two addresses and a valid route before requesting an unreachable
+gateway. Linux rejects operation six with errno 101. The demo displays the
+original structured error, five completed indices, one skipped operation,
+reverse compensation and a fresh observation of the restored managed fields.
+Final verification must still report the desired state unmet.
+
+Each expected CLI failure must exit nonzero. The wrapper exits zero only when
+all failure and recovery assertions pass. It does not deliberately cause kernel
+event loss or compensation failure; independent backend tests cover compensation
+errors, while `.ci/validate-failures.sh` also restores preexisting resources.

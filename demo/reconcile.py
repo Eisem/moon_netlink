@@ -11,7 +11,7 @@ BINARY = ROOT / '_build/native/debug/build/cmd/moonnet/moonnet.exe'
 DESIRED = ROOT / 'demo/desired.json'
 
 
-def run(*args):
+def command(*args, success=True):
     with subprocess.Popen(args, cwd=ROOT, text=True, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, start_new_session=True) as process:
         try:
@@ -23,9 +23,13 @@ def run(*args):
                 pass
             process.communicate(timeout=5)
             raise
-        if process.returncode:
+        if (process.returncode == 0) != success:
             raise RuntimeError(f'{args} exited {process.returncode}\n{output}\n{errors}')
-        return output
+        return subprocess.CompletedProcess(args, process.returncode, output, errors)
+
+
+def run(*args):
+    return command(*args).stdout
 
 
 def cli(*args):
