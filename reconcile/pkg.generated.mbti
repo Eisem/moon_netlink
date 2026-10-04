@@ -1,0 +1,46 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "eisem/moonnetlink/reconcile"
+
+import {
+  "eisem/moonnetlink/state",
+  "eisem/moonnetlink/transport",
+}
+
+// Values
+pub async fn apply_plan(&NetworkBackend, @state.Plan, dry_run? : Bool, dangerous? : Bool) -> ApplyReport
+
+// Errors
+
+// Types and methods
+pub struct ApplyReport {
+  plan : @state.Plan
+  completed : Array[Int]
+  failed : StepFailure?
+  not_executed : Array[Int]
+  dry_run : Bool
+  cancelled : Bool
+}
+pub fn ApplyReport::completed_without_error(Self) -> Bool
+pub fn ApplyReport::to_json(Self) -> Json
+
+pub struct RouteBackend {
+  client : @transport.RouteClient
+}
+pub async fn RouteBackend::execute(Self, @state.Change) -> Unit
+pub fn RouteBackend::new(@transport.RouteClient) -> Self
+pub async fn RouteBackend::snapshot(Self) -> @state.NetworkSnapshot
+pub impl NetworkBackend for RouteBackend
+
+pub struct StepFailure {
+  index : Int
+  error : Error
+  outcome_unknown : Bool
+}
+
+// Type aliases
+
+// Traits
+pub(open) trait NetworkBackend {
+  async fn snapshot(Self) -> @state.NetworkSnapshot
+  async fn execute(Self, @state.Change) -> Unit
+}

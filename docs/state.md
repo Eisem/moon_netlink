@@ -79,6 +79,6 @@ operation arguments. Generating a plan is pure and does not apply changes;
 write. Loopback names/kernel flags and IPv4/IPv6 default-route additions or
 deletions are protected. It recomputes protection even if callers edit the
 display marker. Explicit dangerous permits those resources; stale/missing
-interface indices and invalid SDK specs still fail. The future executor and
-CLI must reuse this check. Concurrent changes after observation remain possible.
+interface indices and invalid SDK specs still fail. The executor and CLI reuse
+this check. Concurrent changes after observation remain possible.
 The read-only `plan` and unconfirmed `apply` CLI reuse this validation.

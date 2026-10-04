@@ -27,6 +27,8 @@ The reproducible Linux comparison with `ip -j` is documented in
 [docs/differential.md](./docs/differential.md).
 The desired schema, snapshots and pure planning APIs are documented in
 [docs/state.md](./docs/state.md).
+Ordered execution and partial-failure reports are documented in
+[docs/reconcile.md](./docs/reconcile.md).
 
 ## CLI
 

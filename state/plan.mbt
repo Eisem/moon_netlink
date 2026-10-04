@@ -24,6 +24,12 @@ pub extend Plan with Debug::{to_repr}
 pub extend Plan with Eq::{equal, not_equal}
 
 ///|
+/// Copy the mutable step collection before handing a plan to an async executor.
+pub fn Plan::copy(self : Plan) -> Plan {
+  { steps: self.steps.copy(), }
+}
+
+///|
 fn change_rank(change : Change) -> Int {
   match change {
     DeleteRoute(..) => 0

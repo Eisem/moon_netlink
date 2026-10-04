@@ -1,0 +1,9 @@
+import {
+  "eisem/moonnetlink/state",
+  "eisem/moonnetlink/route",
+  "eisem/moonnetlink/transport",
+  "moonbitlang/async",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "native"
