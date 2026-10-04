@@ -21,6 +21,7 @@ The repository keeps the files needed to reproduce the source, public API, tests
 | `_build/`、`target/` | 否<br>No | 可重新生成的构建、测试和文档产物<br>Rebuildable build, test and documentation outputs |
 | `.mooncakes/` | 否<br>No | 通过 `moon update` 下载的依赖；版本由 `moon.mod` 记录<br>Dependencies downloaded by `moon update`; versions are recorded in `moon.mod` |
 | `TODO.md` | 否<br>No | 本地工程指导和任务记录；不暂存、不提交、不推送，更新留在工作区<br>Local engineering guidance and task records; never stage, commit or push |
+| `docs/project-proposal.md` | 否<br>No | 本地项目申报书；不暂存、不提交、不推送，更新留在工作区<br>Local project proposal; never stage, commit or push |
 | 编译链接产物、Python 缓存、日志、临时文件<br>Compiler/linker output, Python caches, logs and temporary files | 否<br>No | 本地运行结果，不属于源码<br>Local runtime output, not source |
 | `.env*`（示例除外）、`.aws/`、`.codex/`、`.agents/`<br>These paths, excluding example environment files | 否<br>No | 本地凭据或运行状态<br>Local credentials and runtime state |
 | `MoonBit 黑客松大赛章程/` | 否<br>No | 本地参考资料，不是项目实现或项目发布内容<br>Local contest references, not implementation or release content |

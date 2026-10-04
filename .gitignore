@@ -33,3 +33,6 @@ __pycache__/
 /TODO.md
 /MoonBit 黑客松大赛章程/
 
+# Local project application material; never commit or publish.
+/docs/project-proposal.md
+
