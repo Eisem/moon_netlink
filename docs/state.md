@@ -64,3 +64,11 @@ addresses reject exclusive adds unless the old identity is explicitly absent.
 Two present route intents for one kernel slot conflict, even with different
 gateways/interfaces. An explicit delete/add migration is permitted. Diff order
 is deterministic but dependency ordering belongs to `Plan`; no I/O is performed.
+
+`build_plan(snapshot, desired)` orders route deletions, address deletions, MTU
+preparation, Link UP, address additions, route additions, then Link DOWN.
+Full change values break ties, so input order cannot change the plan. Every
+step includes a reason and a danger marker for loopback (including its kernel
+flag) or default-route changes. `Plan::to_json` emits version 1 and exact
+operation arguments. Generating a plan is pure and does not apply changes;
+danger markers are review information until the separate safety-check task.

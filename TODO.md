@@ -1092,7 +1092,13 @@ P4-05 已完成：只对显式未满足字段产生 typed Change，Link 保留 b
 携带解析后的 SDK spec。完整 preflight 拒绝隐式地址/路由覆盖及同 slot 多 present；
 允许显式 absent 旧身份 + present 新身份迁移，不删除未管理对象。测试覆盖满足后空
 差分、IPv6 默认路由、显式迁移与冲突。验收：state tests、check +73、fmt/info。
-- [ ] `Plan` 和依赖排序；
+- [x] `Plan` 和依赖排序；
+
+P4-06 已完成：pure `build_plan` 先完成 Diff preflight，再按删除路由、删除地址、MTU、
+Link UP、添加地址、添加路由、Link DOWN 排序，完整值确定 tie-break；步骤含原因、
+loopback/default-route danger 标记与可审查 JSON 参数。反转三类输入仍得到一致计划、
+空 desired 不生成操作、生成计划不改变输入有测试。验收：state tests、check +73、
+fmt/info。生成计划不执行网络操作；安全批准、dry-run CLI、apply 尚待独立提交。
 - [ ] loopback/default-route 保护；
 - [ ] dry-run CLI；
 - [ ] `ApplyReport`；
