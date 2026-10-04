@@ -8,6 +8,23 @@ produce a nonzero exit; no fallback changes the host network. All subprocesses
 have bounded execution time. The namespace and interfaces disappear on success
 or failure when its last process exits.
 
+## Container initialization through the SDK
+
+```sh
+bash demo/container.sh
+```
+
+The MoonBit [SDK example](../examples/configure_veth/main.mbt) uses public
+`RouteClient` methods to configure MTU, UP, IPv4/IPv6 addresses and nondefault
+routes on a disposable veth. It also checks exclusive duplicates, replacement
+and kernel extended diagnostics. The demo independently queries the actual
+state, compares it with `ip -j`, then deletes configured resources through the
+SDK and checks the resulting MTU/DOWN state. The namespace is released even if
+initialization fails partway; this direct SDK example has no atomic rollback.
+
+`ip` is used to create the namespace fixture and to independently validate it.
+The MoonBit example sends mutations through RTNetlink, without invoking `ip`.
+
 ## Snapshot, plan and apply
 
 From the repository root:
