@@ -7,15 +7,85 @@ import {
 }
 
 // Values
+pub fn address_identity(DesiredAddress) -> String
+
 pub fn normalize(NetworkSnapshot) -> NetworkSnapshot
 
 pub fn route_destination(@route.Route) -> String?
 
+pub fn route_identity(DesiredRoute) -> String
+
 pub fn route_priority(@route.Route) -> UInt
 
+pub fn validate_desired(DesiredState) -> Unit raise
+
 // Errors
+pub(all) suberror StateError {
+  InvalidField(path~ : String, reason~ : String)
+  ConflictingIntent(identity~ : String)
+  MissingInterface(name~ : String)
+  UnsupportedIntent(reason~ : String)
+  UnsupportedCurrentResource(identity~ : String)
+} derive(Eq, @debug.Debug)
+pub fn StateError::equal(Self, Self) -> Bool
+pub fn StateError::not_equal(Self, Self) -> Bool
+pub fn StateError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub(all) struct DesiredAddress {
+  interface : String
+  ensure : Ensure
+  address : @route.IpAddress
+  prefix_length : Byte
+  scope : Byte
+} derive(Eq, @debug.Debug)
+pub fn DesiredAddress::equal(Self, Self) -> Bool
+pub fn DesiredAddress::not_equal(Self, Self) -> Bool
+pub fn DesiredAddress::to_repr(Self) -> @debug.Repr
+
+pub(all) struct DesiredLink {
+  name : String
+  ensure : Ensure
+  up : Bool?
+  mtu : UInt?
+} derive(Eq, @debug.Debug)
+pub fn DesiredLink::equal(Self, Self) -> Bool
+pub fn DesiredLink::not_equal(Self, Self) -> Bool
+pub fn DesiredLink::to_repr(Self) -> @debug.Repr
+
+pub(all) struct DesiredRoute {
+  interface : String
+  ensure : Ensure
+  destination : @route.IpAddress
+  prefix_length : Byte
+  gateway : @route.IpAddress?
+  table : UInt
+  priority : UInt
+  protocol : Byte
+  scope : Byte
+} derive(Eq, @debug.Debug)
+pub fn DesiredRoute::equal(Self, Self) -> Bool
+pub fn DesiredRoute::not_equal(Self, Self) -> Bool
+pub fn DesiredRoute::to_repr(Self) -> @debug.Repr
+
+pub(all) struct DesiredState {
+  links : Array[DesiredLink]
+  addresses : Array[DesiredAddress]
+  routes : Array[DesiredRoute]
+} derive(Eq, @debug.Debug)
+pub fn DesiredState::equal(Self, Self) -> Bool
+pub fn DesiredState::not_equal(Self, Self) -> Bool
+pub fn DesiredState::parse(String) -> Self raise
+pub fn DesiredState::to_repr(Self) -> @debug.Repr
+
+pub(all) enum Ensure {
+  Present
+  Absent
+} derive(Eq, @debug.Debug)
+pub fn Ensure::equal(Self, Self) -> Bool
+pub fn Ensure::not_equal(Self, Self) -> Bool
+pub fn Ensure::to_repr(Self) -> @debug.Repr
+
 pub struct NetworkSnapshot {
   links : Array[@route.Link]
   addresses : Array[@route.Address]

@@ -1074,7 +1074,12 @@ CLI `snapshot` 仅采集四类对象；资源在异常/取消时关闭。反转�
 差异与输入不变有测试。验收：state tests、native check/fmt/info，以及 Linux 实际
 snapshot JSON 解析；采集仍是顺序观察，不宣称原子快照。
 
-- [ ] `DesiredState` schema 和严格校验；
+- [x] `DesiredState` schema 和严格校验；
+
+P4-03 已完成：版本 1 typed DesiredState 与严格 JSON schema，限制层级/大小/资源数；
+拒绝未知字段、缺失值、错误类型、非整数/溢出、非法名称、IP/prefix/gateway、重复身份
+和冲突意图。数值默认值按 family 明确，typed 输入也可 `validate_desired`。
+验收：native state tests、check +73、fmt/info；解析语法/IP 错误保留原类型。
 - [ ] present/absent 语义；
 - [ ] `Diff`；
 - [ ] `Plan` 和依赖排序；
