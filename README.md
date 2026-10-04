@@ -16,6 +16,9 @@ attempts compensation and verifies desired state with a fresh observation.
 Source files to commit and local files to exclude are listed in
 [docs/repository.md](./docs/repository.md).
 
+The implementation layers and their validation evidence are explained in
+[docs/architecture.md](./docs/architecture.md).
+
 The native descriptor ownership and fail-closed datagram policy are documented
 in [docs/transport.md](./docs/transport.md).
 The transport-independent message, attribute, and control-message rules are
