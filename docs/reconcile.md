@@ -9,7 +9,9 @@ but cannot make kernel changes atomic or stop independent writers.
 step array and runs shared whole-plan protection before any mutation. Explicit
 execution follows Plan order and stops on its first error. `ApplyReport` exposes
 acknowledged indices, the original typed error, remaining indices, dry-run and
-cancellation state. JSON preserves kernel errno/extack fields. An unknown
+cancellation state. JSON preserves kernel errno/extack fields. Optional extack
+message/offset and observed interface index use ordinary strings/numbers when
+present and `null` when absent. An unknown
 failed-operation outcome is marked explicitly; a timeout can follow a successful
 kernel write. Acknowledgement does not prove that desired state was achieved.
 

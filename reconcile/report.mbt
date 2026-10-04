@@ -44,8 +44,10 @@ fn error_json(error : Error) -> Json {
       {
         "kind": "kernel",
         "errno": @json.to_json(errno),
-        "message": @json.to_json(extack.message),
-        "offset": @json.to_json(extack.offset),
+        "message": extack.message.map(Json::string).unwrap_or(Json::null()),
+        "offset": extack.offset
+        .map(value => @json.to_json(value))
+        .unwrap_or(Json::null()),
       }
     @state.SafetyError::StaleInterface(
       interface~,
@@ -56,7 +58,9 @@ fn error_json(error : Error) -> Json {
         "kind": "stale_interface",
         "interface": Json::string(interface),
         "planned_index": @json.to_json(planned_index),
-        "observed_index": @json.to_json(observed_index),
+        "observed_index": observed_index
+        .map(value => @json.to_json(value))
+        .unwrap_or(Json::null()),
       }
     _ => { "kind": "operation", "detail": Json::string("\{Repr(error)}") }
   }

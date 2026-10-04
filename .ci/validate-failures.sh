@@ -71,6 +71,8 @@ with tempfile.TemporaryDirectory(prefix='moonnet-failures-') as directory:
     report = json.loads(result.stdout)
     assert not report['succeeded'] and not report['verification']['satisfied'], report
     assert report['failed']['index'] == failed_index and report['failed']['error']['errno'] == 101, report
+    assert isinstance(report['failed']['error']['message'], str), report['failed']['error']
+    assert report['failed']['error']['offset'] is None or isinstance(report['failed']['error']['offset'], int)
     assert not report['failed']['outcome_unknown']
     assert report['completed'] == list(range(failed_index)), report
     assert report['not_executed'] == list(range(failed_index + 1, len(preview['steps']))), report
