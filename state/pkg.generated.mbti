@@ -1,0 +1,29 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "eisem/moonnetlink/state"
+
+import {
+  "eisem/moonnetlink/route",
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct NetworkSnapshot {
+  links : Array[@route.Link]
+  addresses : Array[@route.Address]
+  routes : Array[@route.Route]
+  neighbors : Array[@route.Neighbor]
+} derive(Eq, @debug.Debug)
+pub fn NetworkSnapshot::equal(Self, Self) -> Bool
+pub fn NetworkSnapshot::interface_name(Self, Int) -> String?
+pub fn NetworkSnapshot::link_by_name(Self, String) -> @route.Link?
+pub fn NetworkSnapshot::new(links~ : ArrayView[@route.Link], addresses~ : ArrayView[@route.Address], routes~ : ArrayView[@route.Route], neighbors~ : ArrayView[@route.Neighbor]) -> Self
+pub fn NetworkSnapshot::not_equal(Self, Self) -> Bool
+pub fn NetworkSnapshot::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

@@ -1059,7 +1059,14 @@ git diff --check
 
 ### Phase 4：声明式状态引擎（2026-10-18 ～ 2026-10-20）
 
-- [ ] `NetworkSnapshot`；
+P4-01 已完成（2026-10-04）：纯 `state.NetworkSnapshot` 保存四类完整对象，复制输入
+及 unknown attribute 数组，以名称查询 Link、以 ifindex 关联名称；保留未知 bytes。
+`state/snapshot_test.mbt` 验证输入清空后状态仍完整、缺失引用返回 None。
+验收命令：`moon check --target native --warn-list +73`、`moon test --target native state`、
+`moon fmt`、`moon info --target native`；文档见 `docs/state.md`。采集非原子，JSON 和
+计划能力仍由后续独立 TODO 完成。
+
+- [x] `NetworkSnapshot`；
 - [ ] 规范化与确定性 JSON；
 - [ ] `DesiredState` schema 和严格校验；
 - [ ] present/absent 语义；

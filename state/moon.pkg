@@ -1,0 +1,5 @@
+import {
+  "eisem/moonnetlink/route",
+}
+
+supported_targets = "native"
