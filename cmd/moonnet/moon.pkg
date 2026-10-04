@@ -1,6 +1,7 @@
 import {
   "eisem/moonnetlink/route",
   "eisem/moonnetlink/transport",
+  "eisem/moonnetlink/state",
   "moonbitlang/async",
   "moonbitlang/async/stdio",
   "moonbitlang/core/env",

@@ -1067,7 +1067,13 @@ P4-01 已完成（2026-10-04）：纯 `state.NetworkSnapshot` 保存四类完整
 计划能力仍由后续独立 TODO 完成。
 
 - [x] `NetworkSnapshot`；
-- [ ] 规范化与确定性 JSON；
+- [x] 规范化与确定性 JSON；
+P4-02 已完成：`normalize` 不修改输入，以名称与完整字段确定排序并重新关联名称；
+版本化 JSON 包含规范化身份和 raw Debug 诊断，默认路由和 metric 明确规范化。
+CLI `snapshot` 仅采集四类对象；资源在异常/取消时关闭。反转输入、幂等规范化、字段
+差异与输入不变有测试。验收：state tests、native check/fmt/info，以及 Linux 实际
+snapshot JSON 解析；采集仍是顺序观察，不宣称原子快照。
+
 - [ ] `DesiredState` schema 和严格校验；
 - [ ] present/absent 语义；
 - [ ] `Diff`；

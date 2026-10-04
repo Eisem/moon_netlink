@@ -23,6 +23,7 @@ fn usage() -> String {
     #|  moonnet route show [--json]
     #|  moonnet neighbor show [--json]
     #|  moonnet watch [link|address|route|neighbor|all] [--jsonl]
+    #|  moonnet snapshot
   )
 }
 
@@ -47,6 +48,10 @@ fn parse_cli_args(args : ArrayView[String]) -> CliOptions? {
 ///|
 async fn run_cli() -> Unit {
   let args = @env.args()
+  if args.length() == 2 && args[1] == "snapshot" {
+    print_snapshot()
+    return
+  }
   if args.length() >= 2 && args[1] == "watch" {
     guard parse_watch_args(args) is Some(options) else { fail(usage()) }
     watch_events(options)

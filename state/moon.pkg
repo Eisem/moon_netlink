@@ -1,5 +1,6 @@
 import {
   "eisem/moonnetlink/route",
+  "moonbitlang/core/json",
 }
 
 supported_targets = "native"

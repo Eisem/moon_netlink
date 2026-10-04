@@ -7,6 +7,11 @@ import {
 }
 
 // Values
+pub fn normalize(NetworkSnapshot) -> NetworkSnapshot
+
+pub fn route_destination(@route.Route) -> String?
+
+pub fn route_priority(@route.Route) -> UInt
 
 // Errors
 
@@ -22,6 +27,7 @@ pub fn NetworkSnapshot::interface_name(Self, Int) -> String?
 pub fn NetworkSnapshot::link_by_name(Self, String) -> @route.Link?
 pub fn NetworkSnapshot::new(links~ : ArrayView[@route.Link], addresses~ : ArrayView[@route.Address], routes~ : ArrayView[@route.Route], neighbors~ : ArrayView[@route.Neighbor]) -> Self
 pub fn NetworkSnapshot::not_equal(Self, Self) -> Bool
+pub fn NetworkSnapshot::to_json(Self) -> Json
 pub fn NetworkSnapshot::to_repr(Self) -> @debug.Repr
 
 // Type aliases
