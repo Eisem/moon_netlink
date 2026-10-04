@@ -9,6 +9,10 @@ import {
 // Values
 pub fn address_identity(DesiredAddress) -> String
 
+pub fn desired_priority(DesiredRoute) -> UInt
+
+pub fn evaluate_intent(NetworkSnapshot, DesiredState) -> Array[IntentStatus] raise
+
 pub fn normalize(NetworkSnapshot) -> NetworkSnapshot
 
 pub fn route_destination(@route.Route) -> String?
@@ -86,6 +90,16 @@ pub fn Ensure::equal(Self, Self) -> Bool
 pub fn Ensure::not_equal(Self, Self) -> Bool
 pub fn Ensure::to_repr(Self) -> @debug.Repr
 
+pub(all) struct IntentStatus {
+  intent : ResourceIntent
+  interface_index : Int?
+  exists : Bool
+  satisfied : Bool
+} derive(Eq, @debug.Debug)
+pub fn IntentStatus::equal(Self, Self) -> Bool
+pub fn IntentStatus::not_equal(Self, Self) -> Bool
+pub fn IntentStatus::to_repr(Self) -> @debug.Repr
+
 pub struct NetworkSnapshot {
   links : Array[@route.Link]
   addresses : Array[@route.Address]
@@ -99,6 +113,15 @@ pub fn NetworkSnapshot::new(links~ : ArrayView[@route.Link], addresses~ : ArrayV
 pub fn NetworkSnapshot::not_equal(Self, Self) -> Bool
 pub fn NetworkSnapshot::to_json(Self) -> Json
 pub fn NetworkSnapshot::to_repr(Self) -> @debug.Repr
+
+pub(all) enum ResourceIntent {
+  Link(DesiredLink)
+  Address(DesiredAddress)
+  Route(DesiredRoute)
+} derive(Eq, @debug.Debug)
+pub fn ResourceIntent::equal(Self, Self) -> Bool
+pub fn ResourceIntent::not_equal(Self, Self) -> Bool
+pub fn ResourceIntent::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

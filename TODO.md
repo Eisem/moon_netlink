@@ -1080,7 +1080,12 @@ P4-03 已完成：版本 1 typed DesiredState 与严格 JSON schema，限制层�
 拒绝未知字段、缺失值、错误类型、非整数/溢出、非法名称、IP/prefix/gateway、重复身份
 和冲突意图。数值默认值按 family 明确，typed 输入也可 `validate_desired`。
 验收：native state tests、check +73、fmt/info；解析语法/IP 错误保留原类型。
-- [ ] present/absent 语义；
+- [x] present/absent 语义；
+
+P4-04 已完成：纯 `evaluate_intent` 仅评估显式资源，未声明对象不删除；缺失接口满足
+Address/Route absent、拒绝 present；IPv6 IFA_ADDRESS 与默认路由规范化身份可匹配。
+Link absent 明确拒绝（SDK 尚不支持删除）；`up=false` 可禁用现有 Link。peer address、
+不可重现的当前 route 特性/元数据拒绝规划。验收：state intent tests、check +73、fmt/info。
 - [ ] `Diff`；
 - [ ] `Plan` 和依赖排序；
 - [ ] loopback/default-route 保护；

@@ -189,7 +189,15 @@ pub fn address_identity(address : DesiredAddress) -> String {
 
 ///|
 pub fn route_identity(route : DesiredRoute) -> String {
-  "\{route.interface}|\{route.table}|\{route.destination.to_string()}/\{route.prefix_length.to_int()}|\{Repr(route.gateway)}|\{route.priority}"
+  "\{route.interface}|\{route.table}|\{route.destination.to_string()}/\{route.prefix_length.to_int()}|\{Repr(route.gateway)}|\{desired_priority(route)}"
+}
+
+///|
+pub fn desired_priority(route : DesiredRoute) -> UInt {
+  match route.destination {
+    V6(_) if route.priority == 0 => 1024
+    _ => route.priority
+  }
 }
 
 ///|

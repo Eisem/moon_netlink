@@ -42,3 +42,16 @@ also checks typed SDK callers. Schema errors contain field paths; JSON syntax
 and IP/route validation retain their original error types. JSON nesting and
 input size are bounded. Parsing uses the core JSON parser's object-key rules.
 Interpretation of present/absent and diff are the next independent tasks.
+
+`evaluate_intent` considers only explicitly declared resources. Present means
+the declared identity and supported fields match; absent means that identity
+does not exist. Missing interfaces satisfy absent Address/Route intents but
+fail present intent before planning. IPv6 address matching uses IFA_ADDRESS
+when IFA_LOCAL is absent; default-route destination/priority are normalized.
+Unspecified resources, flags and link fields remain unmanaged.
+
+Link creation/deletion is outside the SDK subset, so absent Link is explicitly
+rejected; `up=false` requests disabling an existing link. Existing point-to-point
+addresses, mismatched scope/protocol or unsupported route features fail instead
+of constructing a mutation that cannot reproduce their semantics. Migration
+of unsupported properties requires a future explicit API, not implicit deletion.
