@@ -33,6 +33,8 @@ The desired schema, snapshots and pure planning APIs are documented in
 [docs/state.md](./docs/state.md).
 Ordered execution and partial-failure reports are documented in
 [docs/reconcile.md](./docs/reconcile.md).
+Fixed-seed malformed-input checks and their execution budget are documented in
+[docs/robustness.md](./docs/robustness.md).
 
 ## CLI
 

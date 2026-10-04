@@ -28,7 +28,7 @@ the same public SDK and reconciliation APIs available to downstream callers.
 | [transport](transport.md) | Independent descriptor ownership, serialized requests, sequence correlation, bounded waiting, ACK/dump errors and lossy multicast events | Fault fixtures plus live namespace tests in `transport/` |
 | [state](state.md) | Owned snapshots, bounded strict desired schema, explicitly managed resources, deterministic differences/plans and whole-plan protection | Scope, collision, ordering and protection tests in `state/` |
 | [reconcile](reconcile.md) | Ordered execution, partial reports, reverse best-effort compensation and fresh desired-state verification | Injectable backend failure/cancellation tests and real CLI failure integration |
-| [CLI](cli.md) | Deterministic query JSON, typed JSONL events, read-only preview and explicitly confirmed execution | Seven `.ci/validate-*.sh` scripts and the [demonstrations](demo.md) |
+| [CLI](cli.md) | Deterministic query JSON, typed JSONL events, read-only preview and explicitly confirmed execution | Isolated network scripts in `.ci/` and the [demonstrations](demo.md) |
 
 The protocol layer can reject malformed input without opening a socket. Typed
 requests reject invalid IP families, prefixes and indices before sending bytes.
