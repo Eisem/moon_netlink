@@ -16,7 +16,7 @@ The repository keeps the files needed to reproduce the source, public API, tests
 | `cmd/moonnet/`、`examples/` | 是<br>Yes | 查询、JSONL 监听及隔离修改示例<br>Queries, JSONL monitoring and isolated mutation examples |
 | `.ci/*.sh`、`.ci/*.py` | 是<br>Yes | 可复现的隔离 namespace 验证与 `ip -j` 差分脚本<br>Reproducible namespace validation and `ip -j` differential scripts |
 | `README.md`、`docs/`、`LICENSE` | 是<br>Yes | 使用方式、公开实现进度、协议和安全约定、许可证<br>Usage, public implementation status, protocol/safety contracts and license |
-| `demo/` | 是<br>Yes | 固定 desired 配置、隔离演示入口、带断言的公共 CLI 演示，以及 `demo/compare/` 的对照契约、样例与独立契约校验器<br>Fixed desired configurations, isolated entry points, asserted public CLI demonstrations and the `demo/compare/` comparison contract, samples and independent contract checker |
+| `demo/` | 是<br>Yes | 固定 desired 配置、隔离演示入口、带断言的公共 CLI 演示，以及 `demo/compare/` 的对照契约、样例、独立契约校验器、脚本基线和用例运行器<br>Fixed desired configurations, isolated entry points, asserted public CLI demonstrations and the `demo/compare/` comparison contract, samples, independent contract checker, script baseline and case runner |
 | `.gitignore`、`.gitattributes` | 是<br>Yes | 提交边界与跨平台 LF 换行规则<br>Commit boundaries and cross-platform LF line endings |
 | `_build/`、`target/` | 否<br>No | 可重新生成的构建、测试和文档产物<br>Rebuildable build, test and documentation outputs |
 | `.mooncakes/` | 否<br>No | 通过 `moon update` 下载的依赖；版本由 `moon.mod` 记录<br>Dependencies downloaded by `moon update`; versions are recorded in `moon.mod` |

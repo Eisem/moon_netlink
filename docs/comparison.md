@@ -162,17 +162,93 @@ repeat                   apply   steps=0 writes=0 compensation=0 exit=0 rejectio
 comparison contract: 8 case(s) consistent with the declared initial state and target
 ```
 
+## Script baseline / 脚本基线
+
+`demo/compare/script/baseline.sh` implements the same subset with Bash,
+iproute2 and one declared JSON tool. Bash owns argument handling, dependency
+checks, sequencing, command execution, write accounting, exit status and
+cleanup; the JSON tool owns strict validation, the plan and report documents,
+the exact `ip` argv of every step and the independent `ip -j` comparison. The
+baseline never calls MoonNetlink and never parses human-readable `ip` output.
+
+`demo/compare/script/baseline.sh` 使用 Bash、iproute2 和一个明确声明的 JSON 工具实现
+同一输入子集。Bash 负责参数处理、依赖检查、顺序编排、命令执行、写计数、退出状态和
+清理；JSON 工具负责严格校验、计划与报告文档、每一步的 `ip` 参数，以及独立的
+`ip -j` 比较。基线从不调用 MoonNetlink，也不解析人类可读的 `ip` 输出。
+
+| Item / 项目 | Value / 取值 |
+| --- | --- |
+| Invocation / 调用 | `bash demo/compare/script/baseline.sh plan\|apply\|verify <config.json> [--yes] [--json] [--dangerous]` |
+| Dependencies / 依赖 | bash 4+, iproute2 `ip`, python3 3.8+ as the declared JSON tool / bash 4+、iproute2 `ip`、python3 3.8+ 作为声明的 JSON 工具 |
+| Exit status / 退出状态 | 0 reached and verified, 1 rejected or not reached, 2 usage error, 3 missing dependency or observation failure / 0 达成并验证，1 被拒绝或未达成，2 用法错误，3 缺少依赖或观测失败 |
+| Plan document / 计划文档 | `schema_version`, `steps[].change` with the documented operation parameters, `reason`, `dangerous` / 含契约文档化的操作参数、原因与危险标记 |
+| Report document / 报告文档 | `completed`, `failed`, `not_executed`, `rollback`, `attempted_writes`, `compensations`, `verification`, `succeeded` |
+| Rejection / 拒绝 | structured JSON on stderr with the contract's category and `attempted_writes: 0`; stdout stays empty like the SDK CLI / stderr 输出含契约类别与 `attempted_writes: 0` 的结构化 JSON；stdout 与 SDK CLI 一样保持为空 |
+
+`apply` without `--yes` prints exactly the same plan document as `plan`, so the
+dry-run property can be checked on both sides. Every attempted mutation is
+counted, so a repeated run that writes nothing is proven instead of inferred
+from the final state.
+
+`apply` 未传 `--yes` 时输出与 `plan` 完全相同的计划文档，因此预演性质在双方都可校验。
+每次尝试的修改都被计数，因此重复执行零写入是经过证明的，而不是由最终状态推断。
+
+Two differences are already measured and recorded rather than hidden:
+
+已经测量并记录、而不是被隐藏的两处差异：
+
+- `ip(8)` collapses every kernel refusal into exit status 2, so the baseline
+  reports the kernel diagnostic text and a failed command, not a numeric errno;
+  the SDK reports the kernel errno (for example 101) and extended ACK fields.
+  `ip(8)` 把所有内核拒绝都折叠为退出码 2，因此基线报告内核诊断文本和失败命令，而不是
+  数字 errno；SDK 报告内核 errno（例如 101）和扩展 ACK 字段。
+- `ip(8)` can express only the five named address scopes, so the baseline
+  rejects any other declared scope as `UnsupportedIntent` before writing, while
+  the SDK can set arbitrary `IFA_SCOPE` values. No contract case uses one.
+  `ip(8)` 只能表达五个具名地址作用域，因此基线在写入前把其他作用域声明按
+  `UnsupportedIntent` 拒绝，而 SDK 可设置任意 `IFA_SCOPE` 值。契约用例不使用这类取值。
+
+The mid-plan failure path (stop, compensate in reverse, re-verify) is P5-V3.
+Until it lands, the baseline stops at the first failing command and reports the
+completed, failed and not-executed operations without restoring the managed
+state; `docs/comparison.md` therefore does not yet claim recovery.
+
+中途失败路径（停止、逆序补偿、重新核验）属于 P5-V3。在完成前，基线在首个失败命令处
+停止并报告已完成、失败和未执行的操作，但不恢复受管理状态；因此本文尚不主张恢复能力。
+
+Run it against the contract cases inside a disposable namespace:
+
+在临时命名空间中按契约用例运行：
+
+```sh
+bash demo/compare/check.sh                    # every implemented case
+bash demo/compare/check.sh --case repeat      # one case
+bash demo/compare/check.sh --exclude failure  # P5-V2 scope
+```
+
+The runner seats each case's declared initial state through iproute2, runs the
+baseline for the read-only plan, the unconfirmed apply and the confirmed apply,
+and compares plan, report and the independent `ip -j` observation with the
+contract. It refuses to run when the network namespace equals the caller's.
+
+运行器通过 iproute2 建立每个用例声明的初始状态，先后运行只读预演、未确认 apply 和
+确认 apply，并把计划、报告与独立的 `ip -j` 观测同契约比较。当网络命名空间与调用者
+相同时拒绝运行。
+
 ## Status and limits / 当前状态与限制
 
-This page defines the standard. The script baseline (P5-V2/P5-V3), the MoonBit
-application sample (P5-V4) and the automated two-sided verifier (P5-V5) are not
-implemented yet, so this document makes no claim about their relative cost,
-speed or maintainability. Performance measurements stay in the separate
-`ip -j` baseline task and must not be mixed with this acceptance contract.
+This page defines the standard. The script baseline's normal and rejection
+paths (P5-V2) are implemented and checked against the contract; its failure
+path (P5-V3), the MoonBit application sample (P5-V4) and the automated
+two-sided entry point (P5-V5) are not, so this document makes no claim about
+their relative cost, speed or maintainability. Performance measurements stay in
+the separate `ip -j` baseline task and must not be mixed with this acceptance
+contract.
 
-本页定义标准。脚本基线（P5-V2/P5-V3）、MoonBit 应用样例（P5-V4）和自动化双
-方验收入口（P5-V5）尚未实现，因此本文不对它们的相对成本、速度或可维护性作任何主张。
-性能测量仍属于独立的 `ip -j` 基线任务，不得与本验收契约混用。
+本页定义标准。脚本基线的正常流程与拒绝路径（P5-V2）已实现并按契约校验；其失败路径
+（P5-V3）、MoonBit 应用样例（P5-V4）和自动化双方入口（P5-V5）尚未实现，因此本文
+不对它们的相对成本、速度或可维护性作任何主张。性能测量仍属于独立的 `ip -j` 基线
+任务，不得与本验收契约混用。
 
 The expected outcome of the `failure` case depends on the tested kernel
 returning errno 101 for an unreachable gateway; the isolated verification

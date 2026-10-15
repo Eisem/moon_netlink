@@ -1,0 +1,492 @@
+#!/usr/bin/env python3
+"""Run comparison-contract cases against one implementation side (P5-V2).
+
+The runner seats each case's declared initial state through iproute2, invokes
+the selected side for the read-only plan, the unconfirmed apply and the
+confirmed apply, and checks the result against `demo/compare/contract.json`
+with an independent `ip -j` observation. It must run inside a disposable
+network namespace; it refuses to run when the network namespace equals the one
+named in `MOONNETLINK_DEMO_PARENT_NETNS`.
+
+It never decides expectations: every value comes from the contract cases, so a
+side that drifts from the standard fails rather than redefining it.
+"""
+
+from __future__ import annotations
+
+import argparse
+import ipaddress
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+sys.path.insert(0, str(HERE))
+
+import check_contract  # noqa: E402  (shared contract loading and projection)
+
+CONTRACT_PATH = HERE / "contract.json"
+MANAGED_INTERFACE = "cmpveth"
+
+
+class Side:
+    """One implementation side of the contract."""
+
+    name = "abstract"
+
+    def plan(self, config: str, dangerous: bool = False) -> subprocess.CompletedProcess:
+        raise NotImplementedError
+
+    def apply(
+        self, config: str, confirmed: bool, dangerous: bool = False
+    ) -> subprocess.CompletedProcess:
+        raise NotImplementedError
+
+    def document(self, invocation: subprocess.CompletedProcess):
+        try:
+            return json.loads(invocation.stdout)
+        except ValueError:
+            return None
+
+    def rejection_document(self, invocation: subprocess.CompletedProcess):
+        """Rejections keep stdout empty, like the SDK CLI, and go to stderr."""
+        for stream in (invocation.stdout, invocation.stderr):
+            try:
+                parsed = json.loads(stream)
+            except ValueError:
+                continue
+            if isinstance(parsed, dict) and "reason" in parsed:
+                return parsed
+        return None
+
+    def plan_steps(self, invocation: subprocess.CompletedProcess) -> list[dict] | None:
+        document = self.document(invocation)
+        if not isinstance(document, dict) or "steps" not in document:
+            return None
+        return [
+            check_contract.canonical_operation(step["change"]) for step in document["steps"]
+        ]
+
+    def rejection_reason(self, invocation: subprocess.CompletedProcess) -> str | None:
+        document = self.rejection_document(invocation)
+        if document is not None:
+            return document["reason"]
+        # A side without a structured rejection document is allowed to name the
+        # contract's category in its diagnostic instead.
+        for reason in check_contract.REJECTION_REASONS:
+            if reason in invocation.stderr:
+                return reason
+        return None
+
+    def attempted_writes(self, invocation: subprocess.CompletedProcess) -> int | None:
+        document = self.document(invocation)
+        if not isinstance(document, dict):
+            return None
+        if "attempted_writes" in document:
+            return document["attempted_writes"]
+        completed = document.get("completed", [])
+        failed = document.get("failed")
+        return len(completed) + (1 if failed else 0)
+
+    def rejected_write_attempts(self, invocation: subprocess.CompletedProcess) -> int | None:
+        document = self.rejection_document(invocation)
+        if document is not None and "attempted_writes" in document:
+            return document["attempted_writes"]
+        return None
+
+    def compensation_indices(self, invocation: subprocess.CompletedProcess) -> list[int]:
+        document = self.document(invocation)
+        if not isinstance(document, dict):
+            return []
+        return [item.get("index") for item in document.get("rollback", [])]
+
+    def failure_errno(self, invocation: subprocess.CompletedProcess) -> int | None:
+        document = self.document(invocation)
+        failed = document.get("failed") if isinstance(document, dict) else None
+        if not failed:
+            return None
+        return failed.get("error", {}).get("errno")
+
+    def failure_message(self, invocation: subprocess.CompletedProcess) -> str:
+        document = self.document(invocation)
+        failed = document.get("failed") if isinstance(document, dict) else None
+        if not failed:
+            return ""
+        return str(failed.get("error", {}).get("message", ""))
+
+
+class ScriptSide(Side):
+    """The Bash/iproute2 baseline under `demo/compare/script/`."""
+
+    name = "script"
+
+    def __init__(self) -> None:
+        self.entry = HERE / "script" / "baseline.sh"
+
+    def invoke(self, *arguments: str, timeout: int = 90) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ["bash", str(self.entry), *arguments],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+        )
+
+    def plan(self, config: str, dangerous: bool = False) -> subprocess.CompletedProcess:
+        arguments = ["plan", config, "--json"]
+        if dangerous:
+            arguments.append("--dangerous")
+        return self.invoke(*arguments)
+
+    def apply(
+        self, config: str, confirmed: bool, dangerous: bool = False
+    ) -> subprocess.CompletedProcess:
+        arguments = ["apply", config, "--json"]
+        if confirmed:
+            arguments.append("--yes")
+        if dangerous:
+            arguments.append("--dangerous")
+        return self.invoke(*arguments, timeout=120)
+
+
+SIDES = {"script": ScriptSide}
+
+
+def ip_json(*arguments: str):
+    completed = subprocess.run(
+        ["ip", "-j", *arguments], text=True, capture_output=True, timeout=30
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(f"ip -j {' '.join(arguments)} failed: {completed.stderr.strip()}")
+    return json.loads(completed.stdout)
+
+
+def ip(*arguments: str) -> None:
+    completed = subprocess.run(["ip", *arguments], text=True, capture_output=True, timeout=30)
+    if completed.returncode != 0:
+        raise RuntimeError(f"ip {' '.join(arguments)} failed: {completed.stderr.strip()}")
+
+
+def shell(command: str) -> None:
+    completed = subprocess.run(
+        command, shell=True, text=True, capture_output=True, timeout=30, cwd=ROOT
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(f"{command!r} failed: {completed.stderr.strip()}")
+
+
+def reset_topology() -> None:
+    subprocess.run(["ip", "link", "del", MANAGED_INTERFACE], capture_output=True, timeout=30)
+    ip("link", "add", MANAGED_INTERFACE, "type", "veth", "peer", "name", "cmppeer")
+    ip("link", "set", "lo", "up")
+
+
+def seat(case: dict) -> None:
+    reset_topology()
+    for link in case["initial"]["links"]:
+        name = link["name"]
+        if name == "lo" or not link.get("exists", True):
+            continue
+        if link.get("mtu") is not None:
+            ip("link", "set", "dev", name, "mtu", str(link["mtu"]))
+        ip("link", "set", "dev", name, "up" if link.get("up") else "down")
+    for command in case["initial"].get("fixture", []):
+        shell(command)
+    for entry in case["initial"]["unmanaged"]:
+        shell(entry["command"])
+
+
+def observe() -> dict:
+    links = {}
+    for row in ip_json("link", "show"):
+        links[row["ifname"]] = {
+            "mtu": row.get("mtu"),
+            "up": "UP" in row.get("flags", []),
+        }
+    addresses = set()
+    for row in ip_json("address", "show"):
+        for info in row.get("addr_info", []):
+            addresses.add((row["ifname"], info["local"], info["prefixlen"]))
+    routes = set()
+    for flag in ("-4", "-6"):
+        for row in ip_json(flag, "route", "show", "table", "all"):
+            table = row.get("table")
+            table = 254 if table is None else {
+                "main": 254,
+                "local": 255,
+                "default": 253,
+            }.get(table, int(table) if str(table).isdigit() else None)
+            destination = row.get("dst")
+            network = None if destination in (None, "default") else str(
+                ipaddress.ip_network(destination, strict=False)
+            )
+            routes.add(
+                (
+                    row.get("dev"),
+                    table,
+                    network,
+                    row.get("gateway"),
+                    row.get("metric") or 0,
+                )
+            )
+    return {"links": links, "addresses": addresses, "routes": routes}
+
+
+def holds(identity: str, state: dict) -> bool:
+    parts = identity.split("|")
+    if parts[0] == "link":
+        fields = dict(item.split("=") for item in parts[2:])
+        link = state["links"].get(parts[1])
+        if link is None:
+            return False
+        return link["mtu"] == int(fields["mtu"]) and link["up"] == (fields["up"] == "true")
+    if parts[0] == "address":
+        _, interface, address = parts
+        address, prefix = address.split("/")
+        return (interface, address, int(prefix)) in state["addresses"]
+    _, interface, table, destination, gateway, priority = parts
+    table = int(table.split("=")[1])
+    priority = int(priority.split("=")[1])
+    gateway = gateway.split("=")[1]
+    gateway = None if gateway == "none" else gateway
+    network = str(ipaddress.ip_network(destination, strict=False))
+    return any(
+        dev == interface
+        and observed_table == table
+        and observed_network == network
+        and (observed_gateway or None) == gateway
+        and observed_metric == priority
+        for dev, observed_table, observed_network, observed_gateway, observed_metric in state["routes"]
+    )
+
+
+def declared_initial_state(case: dict, state: dict) -> list[str]:
+    problems = []
+    for link in case["initial"]["links"]:
+        if link["name"] == "lo":
+            continue
+        observed = state["links"].get(link["name"])
+        if observed is None:
+            problems.append(f"{link['name']} disappeared")
+            continue
+        if link.get("mtu") is not None and observed["mtu"] != link["mtu"]:
+            problems.append(
+                f"{link['name']} MTU changed from {link['mtu']} to {observed['mtu']}"
+            )
+        if link.get("up") is not None and observed["up"] != link["up"]:
+            problems.append(f"{link['name']} UP state changed from {link['up']}")
+    return problems
+
+
+def run_case(case: dict, side: Side, notes: list[str]) -> list[str]:
+    problems: list[str] = []
+    expected = case["expected"]
+    config = str((HERE / "cases" / case["desired"]).resolve())
+    seat(case)
+
+    plan = side.plan(config)
+    plan_steps = side.plan_steps(plan)
+
+    if case["kind"] == "reject":
+        if plan.returncode == 0:
+            problems.append("a rejected configuration produced a plan")
+        reason = side.rejection_reason(plan)
+        if reason != expected["rejection"]:
+            problems.append(
+                f"rejection category {reason!r} differs from {expected['rejection']!r}"
+            )
+        writes = side.rejected_write_attempts(plan)
+        if writes not in (0, None):
+            problems.append(f"rejection attempted {writes} write(s)")
+        elif writes is None:
+            notes.append("this side does not report an attempted-write count for rejections")
+        unconfirmed = side.apply(config, confirmed=False)
+        if unconfirmed.returncode == 0:
+            problems.append("unconfirmed apply accepted a rejected configuration")
+        confirmed = side.apply(config, confirmed=True)
+        if confirmed.returncode == 0:
+            problems.append("confirmed apply accepted a rejected configuration")
+        after = observe()
+        problems.extend(declared_initial_state(case, after))
+        for identity in case["final"]["preserved"]:
+            if not holds(identity, after):
+                problems.append(f"unmanaged resource {identity} was not preserved")
+        return problems
+
+    if plan.returncode != 0:
+        problems.append(
+            f"plan exited {plan.returncode}: {plan.stderr.strip().splitlines()[:1]}"
+        )
+        return problems
+    declared = [
+        check_contract.canonical_operation(operation)
+        for operation in expected["operations"]
+    ]
+    if plan_steps is None:
+        problems.append("plan output is not a plan document")
+    elif plan_steps != declared:
+        problems.append(f"plan differs from the contract: {plan_steps} != {declared}")
+    if plan_steps is not None and len(plan_steps) != expected["plan_steps"]:
+        problems.append(f"plan has {len(plan_steps)} step(s), expected {expected['plan_steps']}")
+
+    dry_run = side.apply(config, confirmed=False)
+    if dry_run.returncode != 0:
+        problems.append(f"unconfirmed apply exited {dry_run.returncode}")
+    elif side.document(dry_run) != side.document(plan):
+        problems.append("unconfirmed apply differs from the plan")
+    if side.attempted_writes(dry_run) not in (0, None):
+        problems.append("unconfirmed apply attempted a write")
+    elif side.attempted_writes(dry_run) is None:
+        notes.append("this side does not report an attempted-write count for dry-run")
+
+    result = side.apply(config, confirmed=True)
+    document = side.document(result)
+    if not isinstance(document, dict):
+        problems.append(f"confirmed apply exited {result.returncode} without a report")
+        return problems
+    if document.get("dry_run") is not False:
+        problems.append("a confirmed apply reported itself as a dry run")
+    completed = document.get("completed", [])
+    failed = document.get("failed")
+    if completed != expected["completed"]:
+        problems.append(f"completed {completed} differs from {expected['completed']}")
+    if (failed is None) != (expected["failed"] is None):
+        problems.append(f"failed {failed} differs from {expected['failed']}")
+    elif failed is not None:
+        if failed.get("index") != expected["failed"]["index"]:
+            problems.append(f"failed index {failed.get('index')} differs")
+        errno = side.failure_errno(result)
+        if errno is None:
+            notes.append("this side exposes the kernel diagnostic but not the numeric errno")
+            if not side.failure_message(result).strip():
+                problems.append("a failed operation was reported without any diagnostic")
+        elif errno != expected["failed"]["errno"]:
+            problems.append(f"failed errno {errno} differs from {expected['failed']['errno']}")
+    if document.get("not_executed", []) != expected["not_executed"]:
+        problems.append(
+            f"not_executed {document.get('not_executed')} differs from {expected['not_executed']}"
+        )
+    writes = side.attempted_writes(result)
+    if writes is None:
+        notes.append("this side does not report an attempted-write count")
+    elif writes != expected["kernel_write_attempts"]:
+        problems.append(
+            f"attempted writes {writes} differ from {expected['kernel_write_attempts']}"
+        )
+    compensations = side.compensation_indices(result)
+    if len(compensations) != expected["compensation_attempts"]:
+        problems.append(
+            f"compensations {compensations} differ from {expected['compensation_attempts']} "
+            "attempt(s)"
+        )
+    elif expected["compensation_attempts"] and compensations != list(
+        reversed(expected["completed"])
+    ):
+        problems.append(f"compensations {compensations} are not the reverse of completed")
+    verification = document.get("verification", {})
+    if bool(verification.get("satisfied")) != expected["verification_satisfied"]:
+        problems.append(
+            f"verification satisfied={verification.get('satisfied')} differs from "
+            f"{expected['verification_satisfied']}"
+        )
+    if expected["failed"] is not None and verification.get("remaining_steps") != case["final"][
+        "remaining_steps"
+    ]:
+        problems.append(
+            f"remaining steps {verification.get('remaining_steps')} differs from "
+            f"{case['final']['remaining_steps']}"
+        )
+    success_expected = expected["exit_status"] == 0
+    if (result.returncode == 0) != success_expected:
+        problems.append(
+            f"confirmed apply exited {result.returncode}, expected {expected['exit_status']}"
+        )
+
+    after = observe()
+    for identity in case["final"]["preserved"]:
+        if not holds(identity, after):
+            problems.append(f"unmanaged resource {identity} was not preserved")
+    for identity in case["final"]["satisfied"]:
+        if not holds(identity, after):
+            problems.append(f"expected satisfied resource missing: {identity}")
+    return problems
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--side", default="script", choices=sorted(SIDES))
+    parser.add_argument("--case", action="append", default=[], help="only this case id")
+    parser.add_argument(
+        "--exclude", action="append", default=[], help="skip this case id and explain why"
+    )
+    parser.add_argument("--json", action="store_true")
+    options = parser.parse_args(argv[1:])
+
+    parent = os.environ.get("MOONNETLINK_DEMO_PARENT_NETNS")
+    problems: list[str] = []
+    if not parent:
+        problems.append("MOONNETLINK_DEMO_PARENT_NETNS is required; use demo/compare/check.sh")
+    elif os.readlink("/proc/self/ns/net") == parent:
+        problems.append("refusing to run mutations in the caller's network namespace")
+
+    contract = check_contract.load_json(CONTRACT_PATH)
+    case_paths = [HERE / name for name in contract["cases"]]
+    selected = [
+        path
+        for path in case_paths
+        if (not options.case or path.stem in options.case) and path.stem not in options.exclude
+    ]
+    side = SIDES[options.side]()
+    results = []
+    notes: list[str] = []
+    for path in selected:
+        case = check_contract.load_json(path)
+        try:
+            case_problems = run_case(case, side, notes)
+        except Exception as error:  # harness failure, not a product verdict
+            case_problems = [f"harness error: {error}"]
+        results.append(
+            {
+                "id": case["id"],
+                "status": "failed" if case_problems else "ok",
+                "problems": case_problems,
+            }
+        )
+        if not options.json:
+            label = "FAILED" if case_problems else "ok"
+            print(f"{case['id']:<24} {label}")
+            for problem in case_problems:
+                print(f"    {problem}")
+    for case_id in options.exclude:
+        if not options.json:
+            print(f"{case_id:<24} skipped (excluded by the caller)")
+    for note in dict.fromkeys(notes):
+        if not options.json:
+            print(f"note: {note}")
+
+    failures = [item for item in results if item["problems"]]
+    report = {
+        "side": side.name,
+        "cases": results,
+        "excluded": options.exclude,
+        "notes": list(dict.fromkeys(notes)),
+        "problems": problems,
+        "status": "failed" if failures or problems else "ok",
+    }
+    if options.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        for problem in problems:
+            print(f"harness: {problem}", file=sys.stderr)
+        print(
+            f"\n{side.name} side: {len(results) - len(failures)}/{len(results)} case(s) match the "
+            "contract"
+        )
+    return 1 if failures or problems else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
