@@ -580,8 +580,9 @@ def declared_initial_state(case: dict, state: dict) -> list[str]:
     return problems
 
 
-def run_case(case: dict, side: Side, notes: list[str]) -> list[str]:
+def run_case(case: dict, side: Side, notes: list[str]) -> tuple[list[str], dict]:
     problems: list[str] = []
+    observed: dict = {"kind": case["kind"]}
     expected = case["expected"]
     config = str((HERE / "cases" / case["desired"]).resolve())
     seat(case)
@@ -610,16 +611,26 @@ def run_case(case: dict, side: Side, notes: list[str]) -> list[str]:
             problems.append("confirmed apply accepted a rejected configuration")
         after = observe()
         problems.extend(declared_initial_state(case, after))
+        preserved = []
         for identity in case["final"]["preserved"]:
             if not holds(identity, after):
                 problems.append(f"unmanaged resource {identity} was not preserved")
-        return problems
+            preserved.append(holds(identity, after))
+        observed.update(
+            {
+                "rejection": reason,
+                "attempted_writes": writes,
+                "preserved": preserved,
+                "state_unchanged": not declared_initial_state(case, after),
+            }
+        )
+        return problems, observed
 
     if plan.returncode != 0:
         problems.append(
             f"plan exited {plan.returncode}: {plan.stderr.strip().splitlines()[:1]}"
         )
-        return problems
+        return problems, observed
     declared = [
         check_contract.canonical_operation(operation)
         for operation in expected["operations"]
@@ -716,13 +727,30 @@ def run_case(case: dict, side: Side, notes: list[str]) -> list[str]:
         )
 
     after = observe()
+    preserved = []
     for identity in case["final"]["preserved"]:
         if not holds(identity, after):
             problems.append(f"unmanaged resource {identity} was not preserved")
+        preserved.append(holds(identity, after))
+    satisfied = []
     for identity in case["final"]["satisfied"]:
         if not holds(identity, after):
             problems.append(f"expected satisfied resource missing: {identity}")
-    return problems
+        satisfied.append(holds(identity, after))
+    observed.update(
+        {
+            "plan": plan_steps,
+            "completed": completed,
+            "failed_index": (failed or {}).get("index"),
+            "not_executed": document.get("not_executed", []),
+            "attempted_writes": writes,
+            "compensations": compensations,
+            "verification_satisfied": bool(verification.get("satisfied")),
+            "satisfied": satisfied,
+            "preserved": preserved,
+        }
+    )
+    return problems, observed
 
 
 def main(argv: list[str]) -> int:
@@ -754,8 +782,9 @@ def main(argv: list[str]) -> int:
     notes: list[str] = []
     for path in selected:
         case = check_contract.load_json(path)
+        observed: dict = {}
         try:
-            case_problems = run_case(case, side, notes)
+            case_problems, observed = run_case(case, side, notes)
         except Exception as error:  # harness failure, not a product verdict
             case_problems = [f"harness error: {error}"]
         results.append(
@@ -763,6 +792,7 @@ def main(argv: list[str]) -> int:
                 "id": case["id"],
                 "status": "failed" if case_problems else "ok",
                 "problems": case_problems,
+                "observed": observed,
             }
         )
         if not options.json:
@@ -809,7 +839,7 @@ def main(argv: list[str]) -> int:
         for problem in problems:
             print(f"harness: {problem}", file=sys.stderr)
         print(
-            f"\n{side.name} side: {len(results) - len(failures)}/{len(results)} case(s) match the "
+            f"\n{side.name} side: {len(results) - len(failures)}/{len(results)} check(s) match the "
             "contract"
         )
     return 1 if failures or problems else 0

@@ -302,21 +302,58 @@ Run the sample against the same contract cases and the simulated scenarios:
 bash demo/compare/check.sh --side app
 ```
 
+## Two-sided acceptance / 双方验收入口
+
+```sh
+bash demo/compare/run.sh
+```
+
+One command runs both sides against the same contract. Each side gets its own
+disposable user and network namespace, a fresh case state and a bounded run
+(default 900 s); when the bound expires the whole process group of that side is
+terminated, so no listener or namespace process survives. Raw results are saved
+as `<dir>/<side>.json`, `<dir>/<side>.err` and `<dir>/report.txt`, by default
+under `_build/compare/<utc>/`; `--results` changes the directory.
+
+一条命令在同一契约下运行双方。每一方都获得独立的临时用户/网络命名空间、全新的用例状态
+和有界运行时间（默认 900 秒）；超时会终止该方整个进程组，不留下监听进程或命名空间进程。
+原始结果保存为 `<dir>/<side>.json`、`<dir>/<side>.err` 和 `<dir>/report.txt`，默认位于
+`_build/compare/<utc>/`，可用 `--results` 更改目录。
+
+The report prints one row per case plus the recorded notes, and the entry exits
+zero only when both sides pass every case and both observed the same contract
+values. A side "winning" is not a pass condition. Missing dependencies or
+namespace privileges fail explicitly and never fall back to the caller's network
+namespace. `--case <id>`, `--sides <list>` and `--timeout <sec>` narrow or bound
+the run.
+
+报告逐行显示每个用例与已记录的说明；只有当双方通过全部用例且观测到相同的契约值时，入口
+才以零退出。“某一方胜出”不是通过条件。缺少依赖或命名空间权限会显式失败，绝不回退到调用
+者的网络命名空间。`--case <id>`、`--sides <list>` 与 `--timeout <sec>` 可缩小或限制运行。
+
+The table also shows the side-specific checks: `cancellation` and
+`unknown-outcome` for the script baseline, `simulated-outcomes` for the
+application sample. Values that only one side reports appear as notes instead of
+failures, together with the differences recorded above.
+
+表格也显示各方特有的检查：脚本基线为 `cancellation` 与 `unknown-outcome`，应用样例为
+`simulated-outcomes`。只有一方报告的值以说明而非失败的形式呈现，并与上文记录的差异一起列出。
+
 ## Status and limits / 当前状态与限制
 
-This page defines the standard. The script baseline's normal, rejection and
-failure paths (P5-V2/P5-V3) and the MoonBit application sample (P5-V4) are
-implemented and checked against the contract, including reverse compensation,
-unknown-outcome reporting and simulated failure handling; the automated
-two-sided entry point (P5-V5) is not, so this document makes no claim about the
-two sides' relative cost, speed or maintainability. Performance measurements
-stay in the separate `ip -j` baseline task and must not be mixed with this
-acceptance contract.
+This page defines the standard. The script baseline (P5-V2/P5-V3), the MoonBit
+application sample (P5-V4) and the two-sided entry point (P5-V5) are implemented
+and checked against the contract, including reverse compensation,
+unknown-outcome reporting, simulated failure handling and cross-side agreement.
+The publishable value narrative and the five-minute demonstration flow (P5-V6)
+are not written yet, so this document still makes no claim about the two sides'
+relative cost or maintainability, and the separate performance baseline remains
+outstanding. Performance measurements stay out of this acceptance contract.
 
-本页定义标准。脚本基线的正常、拒绝和失败路径（P5-V2/P5-V3）与 MoonBit 应用样例
-（P5-V4）已实现并按契约校验，包含逆序补偿、结果不明报告和模拟失败处理；自动化双方入口
-（P5-V5）尚未实现，因此本文不对双方的相对成本、速度或可维护性作任何主张。性能测量仍
-属于独立的 `ip -j` 基线任务，不得与本验收契约混用。
+本页定义标准。脚本基线（P5-V2/P5-V3）、MoonBit 应用样例（P5-V4）和双方入口（P5-V5）
+已实现并按契约校验，包含逆序补偿、结果不明报告、模拟失败处理和双方一致性核对。可发布的
+价值说明与约五分钟演示流程（P5-V6）尚未撰写，因此本文仍不对双方的相对成本或可维护性作
+任何主张，独立的性能基线也仍待完成。性能测量不属于本验收契约。
 
 The expected outcome of the `failure` case depends on the tested kernel
 returning errno 101 for an unreachable gateway; the isolated verification

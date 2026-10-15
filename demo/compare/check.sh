@@ -6,7 +6,8 @@
 # never touched. The namespace disappears when the last process exits, so no
 # cleanup step can be forgotten.
 set -euo pipefail
-cd "$(dirname "$0")/../.."
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+cd "$HERE/../.."
 
 for tool in unshare ip python3; do
   command -v "$tool" >/dev/null 2>&1 || {
@@ -14,6 +15,10 @@ for tool in unshare ip python3; do
     exit 3
   }
 done
+if ! unshare -Urn -- true 2>/dev/null; then
+  printf 'compare-check: user and network namespaces are required; refusing to touch the host network\n' >&2
+  exit 3
+fi
 
 side=script
 arguments=()
@@ -49,5 +54,5 @@ unshare -Urn -- bash -c '
 set -euo pipefail
 test "$(readlink /proc/self/ns/net)" != "$MOONNETLINK_DEMO_PARENT_NETNS"
 test "$(readlink /proc/self/ns/user)" != "$MOONNETLINK_DEMO_PARENT_USERNS"
-exec python3 demo/compare/run_cases.py "$@"
-' compare-check --side "$side" "${arguments[@]+"${arguments[@]}"}"
+exec python3 "$1" "${@:2}"
+' compare-check "$HERE/run_cases.py" --side "$side" "${arguments[@]+"${arguments[@]}"}"

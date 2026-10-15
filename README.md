@@ -160,6 +160,21 @@ desired files. See [prerequisites, commands and expected output](docs/demo.md).
 
 该入口演示 SDK 容器网络初始化、snapshot/plan/apply、类型化监听、受保护操作拒绝和真实失败恢复；使用固定目标文件验证重新观测、`ip -j` 对拍和第二次空计划。详见 [依赖、命令与预期输出](docs/demo.md)。
 
+The fair two-sided acceptance entry point for the comparison contract is:
+
+对照契约的双方验收入口为：
+
+```sh
+bash demo/compare/run.sh
+```
+
+It runs the script baseline and the MoonBit application sample against the same
+contract in disposable namespaces, saves the raw results and exits zero only
+when both sides meet every declared expectation.
+
+它在临时命名空间中按同一契约运行脚本基线与 MoonBit 应用样例，保存原始结果，并且只有当
+双方满足全部声明预期时才以零退出。
+
 ## License / 许可证
 
 MIT
