@@ -2,10 +2,14 @@
 # Comparison script baseline (P5-V2).
 #
 # Bash owns argument handling, dependency checks, sequencing, command execution,
-# exit status and cleanup. Python is used only as the declared JSON tool for
-# strict validation, plan/report documents and the independent `ip -j`
-# comparison. This baseline never calls MoonNetlink and never parses
-# human-readable `ip` output.
+# write accounting, compensation, exit status and cleanup. Python is used only
+# as the declared JSON tool for strict validation, plan/report documents, the
+# step argv and the independent `ip -j` comparison. This baseline never calls
+# MoonNetlink and never parses human-readable `ip` output.
+#
+# A failure or a termination signal stops execution between steps and then
+# compensates the acknowledged operations in reverse order. That recovery is
+# best effort over supported managed fields; it is not an atomic transaction.
 #
 # The isolated harness in `demo/compare/` runs it inside a disposable network
 # namespace; like the SDK CLI it does not guard the caller by itself, so always
@@ -23,6 +27,11 @@ Usage:
   baseline.sh verify <config.json> [--json]
 
 Dependencies: bash 4+, iproute2 (`ip`), python3 3.8+ as the declared JSON tool.
+
+`apply --yes` executes in plan order, stops at the first failure or at the next
+step boundary after SIGINT/SIGTERM, then compensates acknowledged operations in
+reverse order and re-observes the result. Recovery is best effort and is not an
+atomic transaction.
 
 Exit status:
   0  plan produced, or the requested state was reached and verified
@@ -85,6 +94,9 @@ plan_document="$work/plan.json"
 command_list="$work/commands.tsv"
 report_document="$work/report.json"
 state_file="$work/state.env"
+rollback_commands="$work/rollback.tsv"
+rollback_records="$work/rollback-records.tsv"
+: > "$rollback_records"
 
 build_plan() {
   local -a arguments=(plan "$config")
@@ -102,16 +114,30 @@ show_document() {
 }
 
 # Execute the validated plan through iproute2, in plan order, stopping at the
-# first failure. Every attempted mutation is counted, so a repeated run that
-# writes nothing is provable instead of inferred from the final state.
+# first failure or between steps on a termination signal. Every attempted
+# mutation is counted, so a repeated run that writes nothing is provable
+# instead of inferred from the final state.
 attempts=0
 compensations=0
 failed_index=""
 failed_exit=""
 failed_message=""
 failed_command=""
+failed_outcome_unknown=false
+cancelled=false
+compensated=false
+interrupted=false
 declare -a completed=()
 declare -a not_executed=()
+
+record_not_executed() {
+  local next=$1
+  local total=$2
+  while (( next < total )); do
+    not_executed+=("$next")
+    next=$((next + 1))
+  done
+}
 
 execute_plan() {
   local total
@@ -121,6 +147,11 @@ execute_plan() {
     local -a fields=()
     IFS=$'\t' read -r -a fields <<< "$line"
     local index=${fields[0]}
+    if $interrupted; then
+      cancelled=true
+      record_not_executed "$index" "$total"
+      return 1
+    fi
     local -a command=("${fields[@]:1}")
     attempts=$((attempts + 1))
     local output
@@ -129,18 +160,45 @@ execute_plan() {
     else
       # ip(8) exits 2 for every kernel refusal, so this is the tool's exit
       # status and not the kernel errno; only the diagnostic text is available.
+      # A signal-terminated command leaves the outcome unknown instead.
       failed_exit=$?
       failed_index=$index
       failed_message=${output//$'\n'/ }
       failed_command=${command[*]}
-      local next=$((index + 1))
-      while (( next < total )); do
-        not_executed+=("$next")
-        next=$((next + 1))
-      done
+      if (( failed_exit >= 128 )); then
+        failed_outcome_unknown=true
+      fi
+      record_not_executed $((index + 1)) "$total"
       return 1
     fi
   done < "$command_list"
+  return 0
+}
+
+# Best-effort recovery: compensate only operations the kernel acknowledged, in
+# reverse order, and keep going when one compensation fails. The plan document,
+# computed from the observation taken before the first write, is the recorded
+# pre-change state. This restores supported managed fields and identities, not
+# arbitrary kernel metadata, and is not an atomic transaction.
+compensate_completed() {
+  ((${#completed[@]} > 0)) || return 0
+  compensated=true
+  "${TOOL[@]}" rollback --plan "$plan_document" --completed "${completed[*]}" \
+    > "$rollback_commands"
+  local line
+  while IFS= read -r line; do
+    local -a fields=()
+    IFS=$'\t' read -r -a fields <<< "$line"
+    local index=${fields[0]}
+    local -a command=("${fields[@]:1}")
+    compensations=$((compensations + 1))
+    local output
+    if output=$("${command[@]}" 2>&1); then
+      printf '%s\tcompleted\t\n' "$index" >> "$rollback_records"
+    else
+      printf '%s\tfailed\t%s\n' "$index" "${output//$'\n'/ }" >> "$rollback_records"
+    fi
+  done < "$rollback_commands"
   return 0
 }
 
@@ -148,11 +206,14 @@ write_state() {
   {
     printf 'attempts=%d\n' "$attempts"
     printf 'compensations=%d\n' "$compensations"
+    printf 'cancelled=%s\n' "$cancelled"
+    printf 'compensated=%s\n' "$compensated"
     printf 'completed=%s\n' "${completed[*]:-}"
     printf 'not_executed=%s\n' "${not_executed[*]:-}"
     if [[ -n $failed_index ]]; then
       printf 'failed_index=%d\n' "$failed_index"
       printf 'failed_exit=%d\n' "$failed_exit"
+      printf 'failed_outcome_unknown=%s\n' "$failed_outcome_unknown"
       printf 'failed_message=%s\n' "$failed_message"
       printf 'failed_command=%s\n' "$failed_command"
     fi
@@ -171,11 +232,15 @@ case "$subcommand" in
       show_document "$plan_document"
       exit 0
     fi
+    trap 'interrupted=true' INT TERM
     result=0
     execute_plan || result=$?
+    if [[ -n $failed_index ]] || $cancelled; then
+      compensate_completed
+    fi
     write_state
     "${TOOL[@]}" report --config "$config" --plan "$plan_document" --state "$state_file" \
-      > "$report_document"
+      --rollback "$rollback_records" > "$report_document"
     show_document "$report_document"
     if "${TOOL[@]}" succeeded "$report_document"; then
       exit 0

@@ -208,47 +208,61 @@ Two differences are already measured and recorded rather than hidden:
   `ip(8)` 只能表达五个具名地址作用域，因此基线在写入前把其他作用域声明按
   `UnsupportedIntent` 拒绝，而 SDK 可设置任意 `IFA_SCOPE` 值。契约用例不使用这类取值。
 
-The mid-plan failure path (stop, compensate in reverse, re-verify) is P5-V3.
-Until it lands, the baseline stops at the first failing command and reports the
-completed, failed and not-executed operations without restoring the managed
-state; `docs/comparison.md` therefore does not yet claim recovery.
+The mid-plan failure path is implemented. A failing command stops execution
+immediately; the plan document, computed from the observation taken before the
+first write, is the recorded pre-change state; acknowledged operations are then
+compensated in reverse order, a failing compensation is recorded without
+stopping the remaining ones, and the actual state is observed again. A command
+terminated by a signal is reported as an unknown outcome and is deliberately
+not compensated. SIGTERM or SIGINT stops execution at the next step boundary
+and still compensates. Recovery restores supported managed fields and
+identities only, so it is best effort and not an atomic transaction; SIGKILL
+cannot be compensated at all.
 
-中途失败路径（停止、逆序补偿、重新核验）属于 P5-V3。在完成前，基线在首个失败命令处
-停止并报告已完成、失败和未执行的操作，但不恢复受管理状态；因此本文尚不主张恢复能力。
+中途失败路径已实现：命令失败立即停止；由首次写入前的观测生成的计划文档即所记录的修改前
+状态；随后对已确认操作逆序补偿，某次补偿失败会被记录且不阻止后续补偿，最后重新观测实际
+状态。被信号终止的命令报告为结果不明，并有意不做补偿。SIGTERM 或 SIGINT 会在下一个
+步骤边界停止执行并仍然补偿。恢复只针对受支持的管理字段和身份，因此属于尽力而为，不是
+原子事务；SIGKILL 完全无法补偿。
 
 Run it against the contract cases inside a disposable namespace:
 
 在临时命名空间中按契约用例运行：
 
 ```sh
-bash demo/compare/check.sh                    # every implemented case
+bash demo/compare/check.sh                    # every case plus the extra checks
 bash demo/compare/check.sh --case repeat      # one case
-bash demo/compare/check.sh --exclude failure  # P5-V2 scope
 ```
 
 The runner seats each case's declared initial state through iproute2, runs the
 baseline for the read-only plan, the unconfirmed apply and the confirmed apply,
 and compares plan, report and the independent `ip -j` observation with the
-contract. It refuses to run when the network namespace equals the caller's.
+contract. Beyond the contract cases it checks two interruption behaviours with
+a deterministic `ip` shim that reacts to the third mutation: a SIGTERM between
+steps must compensate the acknowledged operations, and a signal-terminated
+command must be reported as an unknown outcome without being compensated. It
+refuses to run when the network namespace equals the caller's.
 
 运行器通过 iproute2 建立每个用例声明的初始状态，先后运行只读预演、未确认 apply 和
-确认 apply，并把计划、报告与独立的 `ip -j` 观测同契约比较。当网络命名空间与调用者
-相同时拒绝运行。
+确认 apply，并把计划、报告与独立的 `ip -j` 观测同契约比较。除契约用例外，它还用一个
+对第三次修改作出反应的确定性 `ip` 替身检查两种中断行为：步骤之间的 SIGTERM 必须补偿
+已确认操作；被信号终止的命令必须报告为结果不明且不被补偿。当网络命名空间与调用者相同时
+拒绝运行。
 
 ## Status and limits / 当前状态与限制
 
-This page defines the standard. The script baseline's normal and rejection
-paths (P5-V2) are implemented and checked against the contract; its failure
-path (P5-V3), the MoonBit application sample (P5-V4) and the automated
-two-sided entry point (P5-V5) are not, so this document makes no claim about
-their relative cost, speed or maintainability. Performance measurements stay in
-the separate `ip -j` baseline task and must not be mixed with this acceptance
-contract.
+This page defines the standard. The script baseline's normal, rejection and
+failure paths (P5-V2/P5-V3) are implemented and checked against the contract,
+including reverse compensation and unknown-outcome reporting; the MoonBit
+application sample (P5-V4) and the automated two-sided entry point (P5-V5) are
+not, so this document makes no claim about their relative cost, speed or
+maintainability. Performance measurements stay in the separate `ip -j` baseline
+task and must not be mixed with this acceptance contract.
 
-本页定义标准。脚本基线的正常流程与拒绝路径（P5-V2）已实现并按契约校验；其失败路径
-（P5-V3）、MoonBit 应用样例（P5-V4）和自动化双方入口（P5-V5）尚未实现，因此本文
-不对它们的相对成本、速度或可维护性作任何主张。性能测量仍属于独立的 `ip -j` 基线
-任务，不得与本验收契约混用。
+本页定义标准。脚本基线的正常、拒绝和失败路径（P5-V2/P5-V3）已实现并按契约校验，
+包括逆序补偿和结果不明报告；MoonBit 应用样例（P5-V4）和自动化双方入口（P5-V5）
+尚未实现，因此本文不对它们的相对成本、速度或可维护性作任何主张。性能测量仍属于独立的
+`ip -j` 基线任务，不得与本验收契约混用。
 
 The expected outcome of the `failure` case depends on the tested kernel
 returning errno 101 for an unreachable gateway; the isolated verification

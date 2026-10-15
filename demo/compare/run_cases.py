@@ -18,6 +18,7 @@ import argparse
 import ipaddress
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -117,22 +118,34 @@ class Side:
             return ""
         return str(failed.get("error", {}).get("message", ""))
 
+    def extra_checks(self) -> list:
+        """Side-specific behaviours that the shared contract does not cover."""
+        return []
+
 
 class ScriptSide(Side):
     """The Bash/iproute2 baseline under `demo/compare/script/`."""
 
     name = "script"
 
+    #: The mutation that is in flight when an extra check interrupts execution.
+    interrupt_step = 3
+    #: Seconds the shim holds one mutation, so the signal lands inside it.
+    interrupt_delay = 2.0
+
     def __init__(self) -> None:
         self.entry = HERE / "script" / "baseline.sh"
 
-    def invoke(self, *arguments: str, timeout: int = 90) -> subprocess.CompletedProcess:
+    def invoke(
+        self, *arguments: str, timeout: int = 90, env: dict | None = None
+    ) -> subprocess.CompletedProcess:
         return subprocess.run(
             ["bash", str(self.entry), *arguments],
             cwd=ROOT,
             text=True,
             capture_output=True,
             timeout=timeout,
+            env=env,
         )
 
     def plan(self, config: str, dangerous: bool = False) -> subprocess.CompletedProcess:
@@ -150,6 +163,169 @@ class ScriptSide(Side):
         if dangerous:
             arguments.append("--dangerous")
         return self.invoke(*arguments, timeout=120)
+
+    def shim(self, directory: Path, behaviour: str) -> Path:
+        """An `ip` wrapper that reacts to the Nth mutation, not to observations."""
+        real = shutil.which("ip")
+        marker = directory / "started"
+        if behaviour == "self-signal":
+            action = 'kill -TERM "$$"\n      exit 143\n'
+        else:
+            action = f'touch "{marker}"\n      sleep {self.interrupt_delay}\n'
+        shim = directory / "ip"
+        shim.write_text(
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            f'real={real!r}\n'
+            'if [[ ${1-} == -j ]]; then exec "$real" "$@"; fi\n'
+            f'count={str(directory / "count")!r}\n'
+            'value=$(cat "$count")\n'
+            "value=$((value + 1))\n"
+            'printf "%s\\n" "$value" > "$count"\n'
+            f"if (( value == {self.interrupt_step} )); then\n"
+            f"  {action}"
+            "fi\n"
+            'exec "$real" "$@"\n',
+            encoding="utf-8",
+        )
+        shim.chmod(0o755)
+        return shim
+
+    def extra_checks(self):
+        return [
+            ("cancellation", self.cancellation_check),
+            ("unknown-outcome", self.unknown_outcome_check),
+        ]
+
+    def _interrupted_run(self, behaviour: str, problems: list[str]):
+        """Run one interrupted apply of the `converge` case."""
+        import signal
+        import tempfile
+        import time
+
+        case = check_contract.load_json(HERE / "cases" / "converge.json")
+        config = str((HERE / "cases" / case["desired"]).resolve())
+        seat(case)
+        with tempfile.TemporaryDirectory(prefix="compare-interrupt-") as workspace:
+            directory = Path(workspace)
+            (directory / "count").write_text("0\n", encoding="utf-8")
+            self.shim(directory, behaviour)
+            env = dict(os.environ)
+            env["PATH"] = f"{directory}{os.pathsep}{env['PATH']}"
+            process = subprocess.Popen(
+                ["bash", str(self.entry), "apply", config, "--yes", "--json"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+            )
+            try:
+                if behaviour == "cancel":
+                    marker = directory / "started"
+                    deadline = time.time() + 30
+                    while not marker.exists() and time.time() < deadline:
+                        time.sleep(0.05)
+                    if not marker.exists():
+                        process.kill()
+                        process.communicate(timeout=10)
+                        return None, ["the shim never reached the interrupting mutation"]
+                    os.kill(process.pid, signal.SIGTERM)
+                stdout, stderr = process.communicate(timeout=60)
+            except BaseException:
+                process.kill()
+                process.communicate(timeout=10)
+                raise
+        if process.returncode == 0:
+            problems.append("an interrupted apply reported success")
+        try:
+            document = json.loads(stdout)
+        except ValueError:
+            problems.append(f"an interrupted apply produced no report: {stderr.strip()[:200]}")
+            return None, problems
+        return document, problems
+
+    def cancellation_check(self) -> list[str]:
+        """SIGTERM between steps must stop execution and compensate."""
+        problems: list[str] = []
+        document, problems = self._interrupted_run("cancel", problems)
+        if document is None:
+            return problems
+        case = check_contract.load_json(HERE / "cases" / "converge.json")
+        total = case["expected"]["plan_steps"]
+        # The shim counts mutations from one, so mutation `interrupt_step` is
+        # step `interrupt_step - 1`. It completes; the trap stops after it.
+        expected_completed = list(range(self.interrupt_step))
+        if document.get("cancelled") is not True:
+            problems.append("cancellation was not reported")
+        if document.get("failed") is not None:
+            problems.append("a cancelled apply reported a failed operation")
+        if document.get("completed") != expected_completed:
+            problems.append(
+                f"completed {document.get('completed')} differs from {expected_completed}"
+            )
+        expected_remaining = list(range(self.interrupt_step, total))
+        if document.get("not_executed") != expected_remaining:
+            problems.append(
+                f"not_executed {document.get('not_executed')} differs from {expected_remaining}"
+            )
+        indices = [item.get("index") for item in document.get("rollback", [])]
+        if indices != list(reversed(expected_completed)):
+            problems.append(f"compensation {indices} is not the reverse of the completed steps")
+        if any(item.get("status") != "completed" for item in document.get("rollback", [])):
+            problems.append("a cancellation compensation did not restore its step")
+        problems.extend(self._restored(document, total))
+        return problems
+
+    def unknown_outcome_check(self) -> list[str]:
+        """A signal-terminated command has an unknown outcome and is not compensated."""
+        problems: list[str] = []
+        document, problems = self._interrupted_run("self-signal", problems)
+        if document is None:
+            return problems
+        case = check_contract.load_json(HERE / "cases" / "converge.json")
+        total = case["expected"]["plan_steps"]
+        failed_step = self.interrupt_step - 1
+        expected_completed = list(range(failed_step))
+        if (document.get("failed") or {}).get("outcome_unknown") is not True:
+            problems.append("a signal-terminated operation was not reported as unknown")
+        if document.get("completed") != expected_completed:
+            problems.append(
+                f"completed {document.get('completed')} differs from {expected_completed}"
+            )
+        expected_remaining = list(range(self.interrupt_step, total))
+        if document.get("not_executed") != expected_remaining:
+            problems.append(
+                f"not_executed {document.get('not_executed')} differs from {expected_remaining}"
+            )
+        if document.get("attempted_writes") != self.interrupt_step:
+            problems.append(
+                f"attempted writes {document.get('attempted_writes')} differ from "
+                f"{self.interrupt_step}"
+            )
+        indices = [item.get("index") for item in document.get("rollback", [])]
+        if indices != list(reversed(expected_completed)):
+            problems.append(f"compensation {indices} differs from {list(reversed(expected_completed))}")
+        if any(item.get("status") != "completed" for item in document.get("rollback", [])):
+            problems.append("a compensation did not restore its step")
+        problems.extend(self._restored(document, total))
+        return problems
+
+    def _restored(self, document: dict, remaining: int) -> list[str]:
+        """The interrupted run must leave the declared initial state behind."""
+        problems = []
+        verification = document.get("verification", {})
+        if verification.get("remaining_steps") != remaining:
+            problems.append(
+                f"remaining steps {verification.get('remaining_steps')} differ from {remaining}; "
+                "the initial state was not restored"
+            )
+        state = observe()
+        case = check_contract.load_json(HERE / "cases" / "converge.json")
+        for identity in case["final"]["preserved"]:
+            if not holds(identity, state):
+                problems.append(f"unmanaged resource {identity} was not preserved")
+        return problems
 
 
 SIDES = {"script": ScriptSide}
@@ -349,6 +525,8 @@ def run_case(case: dict, side: Side, notes: list[str]) -> list[str]:
         return problems
     if document.get("dry_run") is not False:
         problems.append("a confirmed apply reported itself as a dry run")
+    if document.get("cancelled", False) is not False:
+        problems.append("a confirmed apply reported cancellation for a contract case")
     completed = document.get("completed", [])
     failed = document.get("failed")
     if completed != expected["completed"]:
@@ -386,6 +564,15 @@ def run_case(case: dict, side: Side, notes: list[str]) -> list[str]:
         reversed(expected["completed"])
     ):
         problems.append(f"compensations {compensations} are not the reverse of completed")
+    statuses = [
+        (item.get("index"), item.get("status")) for item in document.get("rollback", [])
+    ]
+    if expected["failed"] is not None:
+        for index, status in statuses:
+            if status != "completed":
+                problems.append(
+                    f"compensation of step {index} reported {status!r} instead of restoring it"
+                )
     verification = document.get("verification", {})
     if bool(verification.get("satisfied")) != expected["verification_satisfied"]:
         problems.append(
@@ -463,6 +650,23 @@ def main(argv: list[str]) -> int:
     for case_id in options.exclude:
         if not options.json:
             print(f"{case_id:<24} skipped (excluded by the caller)")
+    for name, check in side.extra_checks():
+        try:
+            check_problems = check()
+        except Exception as error:  # harness failure, not a product verdict
+            check_problems = [f"harness error: {error}"]
+        results.append(
+            {
+                "id": name,
+                "status": "failed" if check_problems else "ok",
+                "problems": check_problems,
+            }
+        )
+        if not options.json:
+            label = "FAILED" if check_problems else "ok"
+            print(f"{name:<24} {label}")
+            for problem in check_problems:
+                print(f"    {problem}")
     for note in dict.fromkeys(notes):
         if not options.json:
             print(f"note: {note}")

@@ -15,7 +15,8 @@ It never invokes MoonNetlink and never parses human-readable `ip` output.
 Subcommands
     plan <config.json> [--dangerous]     validated plan document (JSON)
     commands <plan.json>                 the ip argv of every step, tab separated
-    report --config C --plan P --state S structured execution report (JSON)
+    rollback <plan.json> --completed I.. inverse argv for the completed steps
+    report --config C --plan P --state S [--rollback R]   structured report (JSON)
     verify <config.json>                 satisfaction of every declared resource
     observe                              the normalized observation used above
     format <document.json>               human-readable plan, report or verification
@@ -76,6 +77,16 @@ RANK = {
     "add_address": 4,
     "add_route": 5,
     "set_link_down": 6,
+}
+# Best-effort inverse of each operation, restricted to the shared subset.
+INVERSE = {
+    "set_mtu": "set_mtu",
+    "set_link_up": "set_link_down",
+    "set_link_down": "set_link_up",
+    "add_address": "delete_address",
+    "delete_address": "add_address",
+    "add_route": "delete_route",
+    "delete_route": "add_route",
 }
 REASON = {
     "set_mtu": "declared MTU differs from the observed value",
@@ -688,21 +699,83 @@ def step_argv(change: dict) -> list[str]:
     return argv
 
 
-def satisfied_identities(desired: dict, state: dict) -> tuple[list[str], int]:
+def inverse_argv(change: dict) -> tuple[list[str] | None, str]:
+    """Compensating argv for one acknowledged step, or why none exists.
+
+    Compensation restores supported managed fields and identities only; it does
+    not restore arbitrary kernel metadata or implicit connected-route effects.
+    """
+    operation = INVERSE[change["operation"]]
+    if operation == "set_mtu":
+        before = change.get("before")
+        if before is None:
+            return None, "the previous MTU was not observed"
+        return ["ip", "link", "set", "dev", change["interface"], "mtu", str(before)], ""
+    inverse = dict(change)
+    inverse["operation"] = operation
+    return step_argv(inverse), ""
+
+
+def read_rollback(path: str | None) -> dict:
+    records: dict = {}
+    if not path:
+        return records
+    target = Path(path)
+    if not target.is_file():
+        return records
+    for line in target.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        fields = line.split("\t")
+        records[int(fields[0])] = {
+            "status": fields[1],
+            "message": fields[2] if len(fields) > 2 else "",
+        }
+    return records
+
+
+def compensation_results(completed: list[int], records: dict) -> list[dict]:
+    """Reverse-order compensation of every acknowledged step."""
+    results = []
+    for index in reversed(completed):
+        record = records.get(index)
+        if record is None:
+            results.append(
+                {
+                    "index": index,
+                    "status": "unavailable",
+                    "message": "no compensating command was recorded",
+                }
+            )
+        else:
+            results.append({"index": index, "status": record["status"], "message": record["message"]})
+    return results
+
+
+def required_steps(desired: dict, state: dict) -> int | None:
+    """Plan length for one observation, or None when the state is unsupported.
+
+    A declared resource can need more than one step (MTU and UP on one link), so
+    the remaining work is the plan length, not the count of unsatisfied
+    resources. Protection is not re-applied while only counting.
+    """
+    try:
+        return len(plan(desired, state, dangerous=True)["steps"])
+    except Rejected:
+        return None
+
+
+def satisfied_identities(desired: dict, state: dict) -> tuple[list[str], int | None]:
     """Evaluate every declared resource against one observation."""
     satisfied: list[str] = []
-    remaining = 0
     for link in desired["links"]:
         current = observed_link(state, link["name"])
         if current is None:
-            remaining += 1
             continue
         if (link["mtu"] is None or link["mtu"] == current["mtu"]) and (
             link["up"] is None or link["up"] == current["up"]
         ):
             satisfied.append(link_identity(link))
-        else:
-            remaining += 1
     for address in desired["addresses"]:
         present = any(
             current["interface"] == address["interface"]
@@ -712,15 +785,11 @@ def satisfied_identities(desired: dict, state: dict) -> tuple[list[str], int]:
         )
         if present == (address["ensure"] == "present"):
             satisfied.append(address_identity(address))
-        else:
-            remaining += 1
     for route in desired["routes"]:
         present = bool(matching_routes(state, route))
         if present == (route["ensure"] == "present"):
             satisfied.append(route_identity(route))
-        else:
-            remaining += 1
-    return satisfied, remaining
+    return satisfied, required_steps(desired, state)
 
 
 def read_state(path: str) -> dict:
@@ -731,7 +800,7 @@ def read_state(path: str) -> dict:
         key, _, value = line.partition("=")
         if key in ("attempts", "failed_index", "failed_exit", "compensations"):
             state[key] = int(value)
-        elif key in ("completed", "not_executed", "compensation", "compensated"):
+        elif key in ("completed", "not_executed"):
             state[key] = [int(item) for item in value.split()] if value.strip() else []
         elif key == "rollback":
             state[key] = [
@@ -743,7 +812,9 @@ def read_state(path: str) -> dict:
     return state
 
 
-def build_report(config_path: str, plan_path: str, state_path: str) -> dict:
+def build_report(
+    config_path: str, plan_path: str, state_path: str, rollback_path: str | None
+) -> dict:
     desired = validate(read_config(config_path))
     steps = json.loads(Path(plan_path).read_text(encoding="utf-8"))["steps"]
     state = read_state(state_path)
@@ -761,21 +832,29 @@ def build_report(config_path: str, plan_path: str, state_path: str) -> dict:
                 "message": state.get("failed_message", ""),
                 "command": state.get("failed_command", ""),
             },
-            "outcome_unknown": False,
+            "outcome_unknown": state.get("failed_outcome_unknown") == "true",
         }
+    records = read_rollback(rollback_path)
+    rollback = compensation_results(completed, records) if state.get("compensated") == "true" else []
     observation = snapshot()
     satisfied, remaining = satisfied_identities(desired, observation)
-    succeeded = failed is None and remaining == 0 and len(completed) == len(steps)
+    succeeded = (
+        failed is None
+        and state.get("cancelled") != "true"
+        and remaining == 0
+        and len(completed) == len(steps)
+    )
     return {
         "schema_version": 1,
         "dry_run": False,
+        "cancelled": state.get("cancelled") == "true",
         "plan": {"schema_version": 1, "steps": steps},
         "completed": completed,
         "failed": failed,
         "not_executed": state.get("not_executed", []),
-        "rollback": state.get("rollback", []),
+        "rollback": rollback,
         "attempted_writes": state.get("attempts", 0),
-        "compensations": state.get("compensations", 0),
+        "compensations": len(records),
         "verification": {
             "satisfied": remaining == 0,
             "remaining_steps": remaining,
@@ -822,6 +901,19 @@ def human_report(document: dict) -> str:
         f"Attempted writes: {document.get('attempted_writes', 0)}; "
         f"compensations: {document.get('compensations', 0)}"
     )
+    rollback = document.get("rollback", [])
+    if rollback:
+        incomplete = [item for item in rollback if item.get("status") != "completed"]
+        lines.append(
+            f"Reverse compensation: {len(rollback) - len(incomplete)}/{len(rollback)} step(s) "
+            "restored; not an atomic transaction"
+        )
+        for item in incomplete:
+            lines.append(
+                f"   index {item['index']}: {item.get('status')} {item.get('message', '')}".rstrip()
+            )
+    if document.get("cancelled"):
+        lines.append("Execution was cancelled between steps; compensation was attempted")
     verification = document.get("verification", {})
     if verification.get("satisfied"):
         lines.append("Verification: requested state satisfied by a fresh ip -j observation")
@@ -877,11 +969,27 @@ def main(argv: list[str]) -> int:
                 argv_line = "\t".join(step_argv(step["change"]))
                 print(f"{index}\t{argv_line}")
             return 0
+        if command == "rollback":
+            options = dict(zip(rest[0::2], rest[1::2]))
+            steps = json.loads(Path(options["--plan"]).read_text(encoding="utf-8"))["steps"]
+            completed = [int(item) for item in options.get("--completed", "").split()]
+            for index in reversed(completed):
+                argv, reason = inverse_argv(steps[index]["change"])
+                if argv is None:
+                    print(f"compare-baseline: step {index} is not compensable: {reason}", file=sys.stderr)
+                    continue
+                print(f"{index}\t" + "\t".join(argv))
+            return 0
         if command == "report":
             options = dict(zip(rest[0::2], rest[1::2]))
             print(
                 json.dumps(
-                    build_report(options["--config"], options["--plan"], options["--state"]),
+                    build_report(
+                        options["--config"],
+                        options["--plan"],
+                        options["--state"],
+                        options.get("--rollback"),
+                    ),
                     indent=2,
                 )
             )
