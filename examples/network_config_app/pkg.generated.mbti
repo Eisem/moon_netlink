@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "eisem/moonnetlink/examples/network_config_app"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+type ApplicationNotConverged derive(@debug.Debug)
+
+type SimulatedTimeout derive(@debug.Debug)
+
+// Types and methods
+type Conditions derive(Eq, @debug.Debug)
+
+type Decision derive(Eq, @debug.Debug)
+
+type Options
+
+type SimMode derive(Eq, @debug.Debug)
+
+type SimulatedBackend
+
+// Type aliases
+
+// Traits

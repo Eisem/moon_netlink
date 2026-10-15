@@ -48,9 +48,12 @@ Ordered execution and partial-failure reports are documented in
 Fixed-seed malformed-input checks and their execution budget are documented in
 [docs/robustness.md](./docs/robustness.md).
 The scenario, input subset, compared fields and acceptance shared with a script
-baseline are documented in [docs/comparison.md](./docs/comparison.md).
+baseline are documented in [docs/comparison.md](./docs/comparison.md). That page
+also documents the application sample in `examples/network_config_app/`, which
+reads a target, reviews the plan, executes it and judges the returned report
+through the public APIs.
 
-原生文件描述符所有权和可疑截断时拒绝结果的策略见 [传输层说明](./docs/transport.md)。独立于传输层的消息、属性、控制消息规则见 [核心协议说明](./docs/core.md)。类型化模型覆盖范围与校验规则见 [模型说明](./docs/route.md)。查询、事件 CLI 与确定性 JSON 约定见 [CLI 说明](./docs/cli.md)。Linux 下与 `ip -j` 的可复现对拍见 [差分验证说明](./docs/differential.md)。目标配置 schema、快照与纯规划 API 见 [状态模型说明](./docs/state.md)。顺序执行和部分失败报告见 [收敛执行说明](./docs/reconcile.md)。固定 seed 畸形输入检查与运行预算见 [健壮性说明](./docs/robustness.md)。与脚本基线共用的场景、输入范围、比较字段和验收标准见 [对照契约](./docs/comparison.md)。
+原生文件描述符所有权和可疑截断时拒绝结果的策略见 [传输层说明](./docs/transport.md)。独立于传输层的消息、属性、控制消息规则见 [核心协议说明](./docs/core.md)。类型化模型覆盖范围与校验规则见 [模型说明](./docs/route.md)。查询、事件 CLI 与确定性 JSON 约定见 [CLI 说明](./docs/cli.md)。Linux 下与 `ip -j` 的可复现对拍见 [差分验证说明](./docs/differential.md)。目标配置 schema、快照与纯规划 API 见 [状态模型说明](./docs/state.md)。顺序执行和部分失败报告见 [收敛执行说明](./docs/reconcile.md)。固定 seed 畸形输入检查与运行预算见 [健壮性说明](./docs/robustness.md)。与脚本基线共用的场景、输入范围、比较字段和验收标准见 [对照契约](./docs/comparison.md)；该页也说明 `examples/network_config_app/` 应用样例如何通过公共 API 读取目标、审查计划、执行并判断报告。
 
 ## CLI / 命令行
 

@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent
+ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
 import check_contract  # noqa: E402  (shared contract loading and projection)
@@ -121,6 +121,16 @@ class Side:
     def extra_checks(self) -> list:
         """Side-specific behaviours that the shared contract does not cover."""
         return []
+
+    def remaining_steps(self, document: dict) -> int | None:
+        """Remaining plan length from a report, whatever shape the side uses."""
+        verification = document.get("verification") or {}
+        if isinstance(verification.get("remaining_steps"), int):
+            return verification["remaining_steps"]
+        remaining = verification.get("remaining")
+        if isinstance(remaining, dict) and isinstance(remaining.get("steps"), list):
+            return len(remaining["steps"])
+        return None
 
 
 class ScriptSide(Side):
@@ -314,10 +324,10 @@ class ScriptSide(Side):
     def _restored(self, document: dict, remaining: int) -> list[str]:
         """The interrupted run must leave the declared initial state behind."""
         problems = []
-        verification = document.get("verification", {})
-        if verification.get("remaining_steps") != remaining:
+        observed = self.remaining_steps(document)
+        if observed != remaining:
             problems.append(
-                f"remaining steps {verification.get('remaining_steps')} differ from {remaining}; "
+                f"remaining steps {observed} differ from {remaining}; "
                 "the initial state was not restored"
             )
         state = observe()
@@ -328,7 +338,120 @@ class ScriptSide(Side):
         return problems
 
 
-SIDES = {"script": ScriptSide}
+class AppSide(Side):
+    """The repository application sample `examples/network_config_app`."""
+
+    name = "app"
+
+    #: Simulated scenario: the business decision the sample must report.
+    scenarios = (
+        ("partial", "partial"),
+        ("unknown", "outcome-unknown"),
+        ("compensation", "compensation-failed"),
+        ("target-unmet", "target-unmet"),
+    )
+
+    def __init__(self) -> None:
+        self.binary = (
+            ROOT
+            / "_build/native/debug/build/examples/network_config_app/network_config_app.exe"
+        )
+
+    def invoke(self, *arguments: str, timeout: int = 120) -> subprocess.CompletedProcess:
+        if not self.binary.exists():
+            raise RuntimeError(f"{self.binary} is missing; run `moon build --target native` first")
+        return subprocess.run(
+            [str(self.binary), *arguments],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+        )
+
+    def plan(self, config: str, dangerous: bool = False) -> subprocess.CompletedProcess:
+        arguments = ["plan", config, "--json"]
+        if dangerous:
+            arguments.append("--dangerous")
+        return self.invoke(*arguments)
+
+    def apply(
+        self, config: str, confirmed: bool, dangerous: bool = False
+    ) -> subprocess.CompletedProcess:
+        arguments = ["apply", config, "--json"]
+        if confirmed:
+            arguments.append("--yes")
+        if dangerous:
+            arguments.append("--dangerous")
+        return self.invoke(*arguments)
+
+    def document(self, invocation: subprocess.CompletedProcess):
+        """The sample wraps the library report in an application document."""
+        parsed = super().document(invocation)
+        if isinstance(parsed, dict) and "report" in parsed:
+            return parsed["report"]
+        return parsed
+
+    def wrapper(self, invocation: subprocess.CompletedProcess):
+        parsed = super().document(invocation)
+        return parsed if isinstance(parsed, dict) else None
+
+    def extra_checks(self):
+        return [("simulated-outcomes", self.simulated_check)]
+
+    def simulated_check(self) -> list[str]:
+        """The sample must classify simulated failures and never write."""
+        problems: list[str] = []
+        case = check_contract.load_json(HERE / "cases" / "converge.json")
+        config = str((HERE / "cases" / case["desired"]).resolve())
+        seat(case)
+        expected_completed = [0, 1]
+        for mode, decision in self.scenarios:
+            result = self.invoke("apply", config, "--json", "--simulate", mode)
+            if result.returncode == 0:
+                problems.append(f"{mode}: the application accepted a failed simulation")
+            document = self.wrapper(result)
+            if document is None:
+                problems.append(f"{mode}: no application document: {result.stdout[:120]}")
+                continue
+            if document.get("decision") != decision:
+                problems.append(
+                    f"{mode}: decision {document.get('decision')!r} differs from {decision!r}"
+                )
+            if document.get("scenario") != f"simulated:{mode}":
+                problems.append(f"{mode}: the run is not labelled as simulated")
+            report = document.get("report", {})
+            conditions = document.get("conditions", {})
+            if conditions.get("outcome_unknown") is not (mode == "unknown"):
+                problems.append(f"{mode}: outcome_unknown is not classified as expected")
+            if conditions.get("compensation_complete") is (mode == "compensation"):
+                problems.append(f"{mode}: compensation_complete is not classified as expected")
+            if mode == "target-unmet":
+                if report.get("failed") is not None:
+                    problems.append("target-unmet: a failure was reported")
+                if len(report.get("completed", [])) != case["expected"]["plan_steps"]:
+                    problems.append("target-unmet: not every operation was acknowledged")
+                if conditions.get("verified") is not False:
+                    problems.append("target-unmet: an unchanged kernel was reported verified")
+            else:
+                if report.get("completed") != expected_completed:
+                    problems.append(
+                        f"{mode}: completed {report.get('completed')} differs from "
+                        f"{expected_completed}"
+                    )
+                if (report.get("failed") or {}).get("index") != len(expected_completed):
+                    problems.append(f"{mode}: the failing step index differs")
+            statuses = [item.get("status") for item in report.get("rollback", [])]
+            if mode == "compensation" and "failed" not in statuses:
+                problems.append("compensation: a failed compensation was not reported")
+        state = observe()
+        problems.extend(declared_initial_state(case, state))
+        for identity in case["final"]["preserved"]:
+            if not holds(identity, state):
+                problems.append(f"simulated runs modified {identity}")
+        return problems
+
+
+SIDES = {"script": ScriptSide, "app": AppSide}
 
 
 def ip_json(*arguments: str):
@@ -579,11 +702,11 @@ def run_case(case: dict, side: Side, notes: list[str]) -> list[str]:
             f"verification satisfied={verification.get('satisfied')} differs from "
             f"{expected['verification_satisfied']}"
         )
-    if expected["failed"] is not None and verification.get("remaining_steps") != case["final"][
+    if expected["failed"] is not None and side.remaining_steps(document) != case["final"][
         "remaining_steps"
     ]:
         problems.append(
-            f"remaining steps {verification.get('remaining_steps')} differs from "
+            f"remaining steps {side.remaining_steps(document)} differs from "
             f"{case['final']['remaining_steps']}"
         )
     success_expected = expected["exit_status"] == 0

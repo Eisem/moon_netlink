@@ -249,20 +249,74 @@ refuses to run when the network namespace equals the caller's.
 已确认操作；被信号终止的命令必须报告为结果不明且不被补偿。当网络命名空间与调用者相同时
 拒绝运行。
 
+## Application sample / 应用接入样例
+
+`examples/network_config_app/` is an application, not a CLI wrapper. It reads a
+declared target with `state.DesiredState::parse`, observes the network through
+`transport.RouteClient`, reviews the plan with `state.build_plan` and
+`state.validate_plan`, executes it with `reconcile.reconcile` and judges the
+returned `ApplyReport` in process. It never shells out and never copies library
+internals; the enclosing task group closes the client.
+
+`examples/network_config_app/` 是应用样例，而不是 CLI 包装。它用
+`state.DesiredState::parse` 读取目标，用 `transport.RouteClient` 观测网络，用
+`state.build_plan` 与 `state.validate_plan` 审查计划，用 `reconcile.reconcile` 执行，
+并在进程内判断返回的 `ApplyReport`。它不调用外部命令，也不复制库内部实现；由外层任务组
+负责关闭 client。
+
+| Item / 项目 | Value / 取值 |
+| --- | --- |
+| Invocation / 调用 | `network_config_app plan <config.json> [--json] [--dangerous]`; `network_config_app apply <config.json> [--yes] [--json] [--dangerous] [--simulate <scenario>]` |
+| Exit status / 退出状态 | 0 for a read-only plan or a converged target; nonzero for a refusal or an unmet target / 只读计划或已达成目标为 0；被拒绝或目标未达成为非零 |
+| Document / 文档 | `schema_version`, `application`, `scenario`, `decision`, `conditions` and `report` (the library's `ApplyReport` JSON) |
+| Decisions / 判定 | `dry-run`, `converged`, `target-unmet`, `partial`, `outcome-unknown`, `compensation-failed`, `interrupted` |
+| Conditions / 条件 | `execution_completed`, `verified`, `compensation_complete`, `outcome_unknown`, `cancelled` |
+
+An unconfirmed `apply` prints exactly the plan document that `plan` prints and
+writes nothing. The application decides from the report: acknowledged execution
+is not success unless a fresh observation satisfies the target.
+
+未确认的 `apply` 输出与 `plan` 完全相同的计划文档且不写入。应用依据报告判定：仅收到
+确认不算成功，必须由重新观测确认目标达成。
+
+`--simulate` runs against `SimulatedBackend`, an implementation of the public
+`NetworkBackend` trait that observes the real kernel but answers every mutation
+from a fixed scenario. Those runs are labelled `scenario: simulated:<name>` and
+never send a mutation, so failure handling stays reproducible without touching
+the network. The scenarios are `partial` (determinate kernel rejection followed
+by reverse compensation), `unknown` (an operation without a determinate result,
+deliberately not compensated), `compensation` (recovery itself fails) and
+`target-unmet` (every operation acknowledged while the target stays unmet).
+
+`--simulate` 使用 `SimulatedBackend`，它是公共 `NetworkBackend` trait 的实现：观测真实
+内核，但所有修改都由固定场景回答。这些运行标注为 `scenario: simulated:<name>`，且从不
+发送修改，因此失败处理可复现且不触碰网络。场景包括 `partial`（结果确定的内核拒绝并逆序
+补偿）、`unknown`（结果不确定的操作，有意不补偿）、`compensation`（恢复本身失败）和
+`target-unmet`（全部操作被确认但目标仍未达成）。
+
+Run the sample against the same contract cases and the simulated scenarios:
+
+在同一契约用例与模拟场景下运行该样例：
+
+```sh
+bash demo/compare/check.sh --side app
+```
+
 ## Status and limits / 当前状态与限制
 
 This page defines the standard. The script baseline's normal, rejection and
-failure paths (P5-V2/P5-V3) are implemented and checked against the contract,
-including reverse compensation and unknown-outcome reporting; the MoonBit
-application sample (P5-V4) and the automated two-sided entry point (P5-V5) are
-not, so this document makes no claim about their relative cost, speed or
-maintainability. Performance measurements stay in the separate `ip -j` baseline
-task and must not be mixed with this acceptance contract.
+failure paths (P5-V2/P5-V3) and the MoonBit application sample (P5-V4) are
+implemented and checked against the contract, including reverse compensation,
+unknown-outcome reporting and simulated failure handling; the automated
+two-sided entry point (P5-V5) is not, so this document makes no claim about the
+two sides' relative cost, speed or maintainability. Performance measurements
+stay in the separate `ip -j` baseline task and must not be mixed with this
+acceptance contract.
 
-本页定义标准。脚本基线的正常、拒绝和失败路径（P5-V2/P5-V3）已实现并按契约校验，
-包括逆序补偿和结果不明报告；MoonBit 应用样例（P5-V4）和自动化双方入口（P5-V5）
-尚未实现，因此本文不对它们的相对成本、速度或可维护性作任何主张。性能测量仍属于独立的
-`ip -j` 基线任务，不得与本验收契约混用。
+本页定义标准。脚本基线的正常、拒绝和失败路径（P5-V2/P5-V3）与 MoonBit 应用样例
+（P5-V4）已实现并按契约校验，包含逆序补偿、结果不明报告和模拟失败处理；自动化双方入口
+（P5-V5）尚未实现，因此本文不对双方的相对成本、速度或可维护性作任何主张。性能测量仍
+属于独立的 `ip -j` 基线任务，不得与本验收契约混用。
 
 The expected outcome of the `failure` case depends on the tested kernel
 returning errno 101 for an unreachable gateway; the isolated verification

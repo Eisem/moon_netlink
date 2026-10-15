@@ -31,9 +31,16 @@ while (( $# > 0 )); do
     *) printf 'compare-check: unknown argument %s\n' "$1" >&2; exit 2 ;;
   esac
 done
-if [[ $side != script ]]; then
-  printf 'compare-check: only the script side is implemented at P5-V2\n' >&2
+if [[ $side != script && $side != app ]]; then
+  printf 'compare-check: unknown side %s\n' "$side" >&2
   exit 2
+fi
+if [[ $side == app ]]; then
+  command -v moon >/dev/null 2>&1 || {
+    printf 'compare-check: missing dependency: moon\n' >&2
+    exit 3
+  }
+  moon build --target native
 fi
 
 export MOONNETLINK_DEMO_PARENT_NETNS=$(readlink /proc/self/ns/net)
