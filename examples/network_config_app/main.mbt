@@ -330,11 +330,14 @@ fn emit(
 }
 
 ///|
-async fn run(options : Options) -> Unit {
+async fn run(options : Options, writes : Ref[Int]) -> Unit {
   let desired = read_desired(options.path)
   @async.with_task_group(group => {
     let client = @transport.RouteClient::open()
-    group.add_defer(() => @async.protect_from_cancel(() => client.close()))
+    group.add_defer(() => {
+      writes.val = client.mutation_attempts()
+      @async.protect_from_cancel(() => client.close())
+    })
     match options.simulate {
       Some(mode) => {
         let backend = SimulatedBackend::new(client, mode)
@@ -370,10 +373,14 @@ async fn main {
     Some(options) => options
     None => fail(usage())
   }
-  run(options) catch {
+  let writes = Ref::Ref(0)
+  try run(options, writes) catch {
     error => {
+      @stdio.stderr.write("moonnetlink-mutation-attempts:\{writes.val}\n")
       @stdio.stderr.write("network_config_app: \{Repr(error)}\n")
       raise error
     }
+  } noraise {
+    _ => @stdio.stderr.write("moonnetlink-mutation-attempts:\{writes.val}\n")
   }
 }

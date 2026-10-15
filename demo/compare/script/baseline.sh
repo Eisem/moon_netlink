@@ -87,7 +87,10 @@ if [[ $subcommand != apply && $confirmed == true ]]; then
 fi
 
 work=$(mktemp -d)
-cleanup() { rm -rf "$work"; }
+cleanup() {
+  printf 'moonnetlink-mutation-attempts:%d\n' "$(( ${attempts:-0} + ${compensations:-0} ))" >&2
+  rm -rf "$work"
+}
 trap cleanup EXIT
 
 plan_document="$work/plan.json"

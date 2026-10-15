@@ -50,6 +50,7 @@ pub async fn RouteClient::get_link_by_name(Self, String) -> @route.Link
 pub async fn RouteClient::get_links(Self) -> Array[@route.Link]
 pub async fn RouteClient::get_neighbors(Self) -> Array[@route.Neighbor]
 pub async fn RouteClient::get_routes(Self) -> Array[@route.Route]
+pub fn RouteClient::mutation_attempts(Self) -> Int
 pub async fn RouteClient::open(receive_capacity? : Int, request_timeout_ms? : Int) -> Self
 pub async fn RouteClient::set_link_down(Self, Int) -> Unit
 pub async fn RouteClient::set_link_mtu(Self, Int, UInt) -> Unit
@@ -71,8 +72,10 @@ pub struct RouteSocket {
   source : @raw_fd.RawFd
   receive_capacity : Int
   mut closed : Bool
+  mut mutation_count : Int
 }
 pub fn RouteSocket::close(Self) -> Unit
+pub fn RouteSocket::mutation_attempts(Self) -> Int
 pub async fn RouteSocket::open(groups? : UInt, receive_capacity? : Int) -> Self
 pub async fn RouteSocket::request_ack(Self, Bytes, UInt) -> Unit
 pub async fn RouteSocket::request_dump(Self, Bytes, UInt) -> Array[@core.NetlinkMessage]

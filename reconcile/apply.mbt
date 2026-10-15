@@ -11,6 +11,7 @@ pub async fn apply_plan(
 ) -> ApplyReport {
   let plan = plan.copy()
   @state.validate_plan(plan, backend.snapshot(), dangerous~)
+  let before = backend.mutation_attempts()
   let completed : Array[Int] = []
   let mut failed : StepFailure? = None
   let cancelled = if dry_run {
@@ -37,6 +38,7 @@ pub async fn apply_plan(
     is None
   }
   let attempted = completed.length() + (if failed is Some(_) { 1 } else { 0 })
+  let after_execution = backend.mutation_attempts()
   let rollback = if !dry_run && (failed is Some(_) || cancelled) {
     @async.protect_from_cancel(() => {
       rollback_completed(backend, plan, completed)
@@ -55,5 +57,15 @@ pub async fn apply_plan(
     cancelled,
     rollback,
     verification: None,
+    attempted_writes: mutation_delta(before, after_execution),
+    compensations: mutation_delta(after_execution, backend.mutation_attempts()),
+  }
+}
+
+///|
+fn mutation_delta(before : Int?, after : Int?) -> Int? {
+  match (before, after) {
+    (Some(before), Some(after)) if after >= before => Some(after - before)
+    _ => None
   }
 }

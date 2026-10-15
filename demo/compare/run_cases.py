@@ -18,6 +18,7 @@ import argparse
 import ipaddress
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -54,7 +55,9 @@ class Side:
 
     def rejection_document(self, invocation: subprocess.CompletedProcess):
         """Rejections keep stdout empty, like the SDK CLI, and go to stderr."""
-        for stream in (invocation.stdout, invocation.stderr):
+        stderr = "\n".join(line for line in invocation.stderr.splitlines()
+                           if not line.startswith("moonnetlink-mutation-attempts:"))
+        for stream in (invocation.stdout, stderr):
             try:
                 parsed = json.loads(stream)
             except ValueError:
@@ -86,17 +89,15 @@ class Side:
         document = self.document(invocation)
         if not isinstance(document, dict):
             return None
-        if "attempted_writes" in document:
-            return document["attempted_writes"]
-        completed = document.get("completed", [])
-        failed = document.get("failed")
-        return len(completed) + (1 if failed else 0)
+        value = document.get("attempted_writes")
+        return value if type(value) is int and value >= 0 else None
 
     def rejected_write_attempts(self, invocation: subprocess.CompletedProcess) -> int | None:
-        document = self.rejection_document(invocation)
-        if document is not None and "attempted_writes" in document:
-            return document["attempted_writes"]
-        return None
+        return self.total_write_attempts(invocation)
+
+    def total_write_attempts(self, invocation: subprocess.CompletedProcess) -> int | None:
+        matches = re.findall(r"^moonnetlink-mutation-attempts:([0-9]+)$", invocation.stderr, re.MULTILINE)
+        return int(matches[0]) if len(matches) == 1 else None
 
     def compensation_indices(self, invocation: subprocess.CompletedProcess) -> list[int]:
         document = self.document(invocation)
@@ -409,6 +410,8 @@ class AppSide(Side):
             result = self.invoke("apply", config, "--json", "--simulate", mode)
             if result.returncode == 0:
                 problems.append(f"{mode}: the application accepted a failed simulation")
+            if self.total_write_attempts(result) != 0:
+                problems.append(f"{mode}: simulation did not prove zero kernel writes")
             document = self.wrapper(result)
             if document is None:
                 problems.append(f"{mode}: no application document: {result.stdout[:120]}")
@@ -602,11 +605,15 @@ def run_case(case: dict, side: Side, notes: list[str]) -> tuple[list[str], dict]
         if writes not in (0, None):
             problems.append(f"rejection attempted {writes} write(s)")
         elif writes is None:
-            notes.append("this side does not report an attempted-write count for rejections")
+            problems.append("rejection has no measured attempted-write count")
         unconfirmed = side.apply(config, confirmed=False)
+        if side.total_write_attempts(unconfirmed) != 0:
+            problems.append("unconfirmed rejection did not prove zero writes")
         if unconfirmed.returncode == 0:
             problems.append("unconfirmed apply accepted a rejected configuration")
         confirmed = side.apply(config, confirmed=True)
+        if side.total_write_attempts(confirmed) != 0:
+            problems.append("confirmed rejection did not prove zero writes")
         if confirmed.returncode == 0:
             problems.append("confirmed apply accepted a rejected configuration")
         after = observe()
@@ -642,21 +649,21 @@ def run_case(case: dict, side: Side, notes: list[str]) -> tuple[list[str], dict]
     if plan_steps is not None and len(plan_steps) != expected["plan_steps"]:
         problems.append(f"plan has {len(plan_steps)} step(s), expected {expected['plan_steps']}")
 
+    if side.total_write_attempts(plan) != 0:
+        problems.append("plan did not prove zero writes")
     dry_run = side.apply(config, confirmed=False)
     if dry_run.returncode != 0:
         problems.append(f"unconfirmed apply exited {dry_run.returncode}")
     elif side.document(dry_run) != side.document(plan):
         problems.append("unconfirmed apply differs from the plan")
-    if side.attempted_writes(dry_run) not in (0, None):
-        problems.append("unconfirmed apply attempted a write")
-    elif side.attempted_writes(dry_run) is None:
-        notes.append("this side does not report an attempted-write count for dry-run")
+    if side.total_write_attempts(dry_run) != 0:
+        problems.append("unconfirmed apply did not prove zero writes")
 
     result = side.apply(config, confirmed=True)
     document = side.document(result)
     if not isinstance(document, dict):
         problems.append(f"confirmed apply exited {result.returncode} without a report")
-        return problems
+        return problems, observed
     if document.get("dry_run") is not False:
         problems.append("a confirmed apply reported itself as a dry run")
     if document.get("cancelled", False) is not False:
@@ -683,11 +690,16 @@ def run_case(case: dict, side: Side, notes: list[str]) -> tuple[list[str], dict]
         )
     writes = side.attempted_writes(result)
     if writes is None:
-        notes.append("this side does not report an attempted-write count")
+        problems.append("confirmed apply has no measured attempted-write count")
     elif writes != expected["kernel_write_attempts"]:
         problems.append(
             f"attempted writes {writes} differ from {expected['kernel_write_attempts']}"
         )
+    measured_compensations = document.get("compensations")
+    if type(measured_compensations) is not int or measured_compensations != expected["compensation_attempts"]:
+        problems.append(f"measured compensations {measured_compensations} differ from the contract")
+    if side.total_write_attempts(result) != expected["kernel_write_attempts"] + expected["compensation_attempts"]:
+        problems.append("total measured mutation attempts differ from the contract")
     compensations = side.compensation_indices(result)
     if len(compensations) != expected["compensation_attempts"]:
         problems.append(
@@ -770,6 +782,10 @@ def main(argv: list[str]) -> int:
     elif os.readlink("/proc/self/ns/net") == parent:
         problems.append("refusing to run mutations in the caller's network namespace")
 
+    if problems:
+        print("; ".join(problems), file=sys.stderr)
+        return 3
+
     contract = check_contract.load_json(CONTRACT_PATH)
     case_paths = [HERE / name for name in contract["cases"]]
     selected = [
@@ -777,6 +793,12 @@ def main(argv: list[str]) -> int:
         for path in case_paths
         if (not options.case or path.stem in options.case) and path.stem not in options.exclude
     ]
+    known = {path.stem for path in case_paths}
+    unknown = (set(options.case) | set(options.exclude)) - known
+    if unknown:
+        parser.error("unknown contract case(s): " + ", ".join(sorted(unknown)))
+    if not selected:
+        parser.error("no contract cases selected")
     side = SIDES[options.side]()
     results = []
     notes: list[str] = []
@@ -828,6 +850,7 @@ def main(argv: list[str]) -> int:
     report = {
         "side": side.name,
         "cases": results,
+        "selected": [path.stem for path in selected],
         "excluded": options.exclude,
         "notes": list(dict.fromkeys(notes)),
         "problems": problems,

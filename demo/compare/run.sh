@@ -122,8 +122,8 @@ for side in "${side_list[@]}"; do
     printf 'compare-run: %s exceeded %ss and its process group was terminated\n' "$side" "$limit" >&2
     failed=1
   elif (( status != 0 )); then
-    printf 'compare-run: %s side reported %s check failure(s) or a harness error\n' \
-      "$side" "$(grep -c '"status": "failed"' "$results/$side.json" 2>/dev/null || printf '?')" >&2
+    printf 'compare-run: %s side failed (exit %s); see %s\n' \
+      "$side" "$status" "$results/$side.err" >&2
     failed=1
   else
     printf '%s side: all checks passed\n' "$side"
@@ -131,7 +131,7 @@ for side in "${side_list[@]}"; do
 done
 
 report_status=0
-python3 "$HERE/compare_results.py" --results "$results" --sides "$sides" \
+python3 "$HERE/compare_results.py" --results "$results" --sides "$sides" "${cases[@]+"${cases[@]}"}" \
   ${json:+--json} | tee "$results/report.txt" || report_status=$?
 if (( report_status != 0 )); then
   failed=1

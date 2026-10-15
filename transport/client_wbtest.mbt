@@ -104,3 +104,29 @@ async test "live Link point-query errors release the request gate" {
   assert_eq(client.get_link_by_name("lo").name, Some("lo"))
   assert_true(client.get_links().length() > 0)
 }
+
+///|
+#cfg(not(platform="windows"))
+async test "mutation count excludes queries encoding failures and closed sockets" {
+  let client = RouteClient::open()
+  defer client.close()
+  assert_eq(client.mutation_attempts(), 0)
+  let link = client.get_link_by_name("lo")
+  assert_true(client.get_links().length() > 0)
+  assert_eq(client.mutation_attempts(), 0)
+  try client.set_link_mtu(link.index, 0) catch {
+    @route.MutationError::InvalidMtu(..) => ()
+    error => fail("unexpected error: \{Repr(error)}")
+  } noraise {
+    _ => fail("invalid MTU accepted")
+  }
+  assert_eq(client.mutation_attempts(), 0)
+  client.close()
+  try client.set_link_up(link.index) catch {
+    ReadClosed => ()
+    error => fail("unexpected error: \{Repr(error)}")
+  } noraise {
+    _ => fail("closed client accepted a mutation")
+  }
+  assert_eq(client.mutation_attempts(), 0)
+}

@@ -250,3 +250,10 @@ pub async fn RouteClient::get_neighbors(
 pub async fn RouteClient::close(self : RouteClient) -> Unit {
   with_mutex(self.requests, () => self.socket.close())
 }
+
+///|
+/// Cumulative mutation send attempts on this client's socket, including recovery.
+/// Use a dedicated client when measuring one application's writes.
+pub fn RouteClient::mutation_attempts(self : RouteClient) -> Int {
+  self.socket.mutation_attempts()
+}

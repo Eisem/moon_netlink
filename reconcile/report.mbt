@@ -16,6 +16,10 @@ pub struct ApplyReport {
   cancelled : Bool
   rollback : Array[RollbackResult]
   verification : VerificationResult?
+  /// Measured sends during forward execution; None when instrumentation is absent.
+  attempted_writes : Int?
+  /// Measured sends during compensation, not the number of rollback records.
+  compensations : Int?
 }
 
 ///|
@@ -71,6 +75,12 @@ pub fn ApplyReport::to_json(self : ApplyReport) -> Json {
   {
     "schema_version": 1,
     "plan": self.plan.to_json(),
+    "attempted_writes": self.attempted_writes
+    .map(value => @json.to_json(value))
+    .unwrap_or(Json::null()),
+    "compensations": self.compensations
+    .map(value => @json.to_json(value))
+    .unwrap_or(Json::null()),
     "completed": @json.to_json(self.completed),
     "failed": match self.failed {
       None => Json::null()

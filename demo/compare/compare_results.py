@@ -22,6 +22,9 @@ import json
 import sys
 from pathlib import Path
 
+HERE = Path(__file__).resolve().parent
+EXTRA_CHECKS = {"script": ("cancellation", "unknown-outcome"), "app": ("simulated-outcomes",)}
+
 COMPARED_FIELDS = (
     "plan",
     "completed",
@@ -35,6 +38,24 @@ COMPARED_FIELDS = (
 )
 
 
+def valid_observation(field: str, value: object) -> bool:
+    if field == "failed_index":
+        return value is None or (type(value) is int and value >= 0)
+    if field == "attempted_writes":
+        return type(value) is int and value >= 0
+    if field in ("verification_satisfied", "state_unchanged"):
+        return type(value) is bool
+    if field == "rejection":
+        return isinstance(value, str)
+    if not isinstance(value, list):
+        return False
+    if field in ("completed", "not_executed", "compensations"):
+        return all(type(item) is int and item >= 0 for item in value)
+    if field in ("preserved", "satisfied"):
+        return all(type(item) is bool for item in value)
+    return all(isinstance(item, dict) for item in value)
+
+
 def load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -44,9 +65,17 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--results", required=True, help="directory with <side>.json files")
     parser.add_argument("--sides", default="script,app")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--case", action="append", default=[])
     options = parser.parse_args(argv[1:])
 
     sides = [name for name in options.sides.split(",") if name]
+    if not sides or len(sides) != len(set(sides)) or set(sides) - EXTRA_CHECKS.keys():
+        parser.error("--sides must contain distinct script/app names")
+    contract = load(HERE / "contract.json")
+    cases = {load(HERE / path)["id"]: load(HERE / path) for path in contract["cases"]}
+    if set(options.case) - cases.keys():
+        parser.error("unknown contract case(s)")
+    selected = [case_id for case_id in cases if not options.case or case_id in options.case]
     results: dict[str, dict] = {}
     problems: list[str] = []
     for side in sides:
@@ -54,11 +83,34 @@ def main(argv: list[str]) -> int:
         if not path.is_file():
             problems.append(f"{side}: missing result file {path}")
             continue
-        results[side] = load(path)
+        try:
+            result = load(path)
+            if not isinstance(result, dict) or not isinstance(result.get("cases"), list):
+                raise ValueError("expected a result object with cases")
+            if result.get("side") != side:
+                raise ValueError("result side does not match file name")
+            entries = result["cases"]
+            if any(not isinstance(item, dict) or not isinstance(item.get("id"), str)
+                   or not isinstance(item.get("problems"), list) for item in entries):
+                raise ValueError("invalid case record")
+            ids = [item["id"] for item in entries]
+            expected = set(selected) | set(EXTRA_CHECKS[side])
+            if len(ids) != len(set(ids)):
+                problems.append(f"{side}: duplicate case records")
+            if set(ids) != expected:
+                problems.append(f"{side}: case coverage differs: missing={sorted(expected - set(ids))}, unexpected={sorted(set(ids) - expected)}")
+            if result.get("selected") != selected:
+                problems.append(f"{side}: selected cases do not match requested cases")
+            if result.get("status") != "ok":
+                problems.append(f"{side}: result status is not ok")
+            if not isinstance(result.get("problems"), list):
+                raise ValueError("missing harness problems list")
+            results[side] = result
+        except (OSError, ValueError, TypeError) as error:
+            problems.append(f"{side}: invalid result: {error}")
 
     rows = []
-    asymmetries: list[str] = []
-    order: list[str] = []
+    order: list[str] = list(selected)
     for side, result in results.items():
         for entry in result.get("cases", []):
             if entry["id"] not in order:
@@ -75,13 +127,27 @@ def main(argv: list[str]) -> int:
             if entry is None:
                 statuses[side] = "n/a"
                 continue
-            statuses[side] = entry["status"]
+            statuses[side] = entry.get("status", "invalid")
+            if entry.get("status") != "ok":
+                problems.append(f"{side}/{case_id}: case status is not ok")
+            if case_id in selected:
+                fields = (("rejection", "attempted_writes", "preserved", "state_unchanged")
+                          if cases[case_id]["kind"] == "reject" else COMPARED_FIELDS)
+                observation = entry.get("observed")
+                if not isinstance(observation, dict):
+                    problems.append(f"{side}/{case_id}: missing observation")
+                else:
+                    for field in fields:
+                        if field not in observation:
+                            problems.append(f"{side}/{case_id}: missing required observation {field}")
+                        elif not valid_observation(field, observation[field]):
+                            problems.append(f"{side}/{case_id}: invalid required observation {field}")
             if entry["problems"]:
                 problems.extend(f"{side}/{case_id}: {p}" for p in entry["problems"])
         observed = {
             side: next(
                 (
-                    item.get("observed", {})
+                    (item.get("observed") if isinstance(item.get("observed"), dict) else {})
                     for item in (results.get(side) or {}).get("cases", [])
                     if item["id"] == case_id
                 ),
@@ -93,19 +159,13 @@ def main(argv: list[str]) -> int:
         for side in sides[1:]:
             if side not in observed or sides[0] not in observed:
                 continue
-            for field in COMPARED_FIELDS:
+            if case_id not in selected:
+                continue
+            fields = (("rejection", "attempted_writes", "preserved", "state_unchanged")
+                      if cases[case_id]["kind"] == "reject" else COMPARED_FIELDS)
+            for field in fields:
                 left = observed[sides[0]].get(field)
                 right = observed[side].get(field)
-                if left is None or right is None:
-                    # One side does not report this value. That is a documented
-                    # reporting asymmetry, not a behavioural difference, so it
-                    # is recorded as a note instead of a failure.
-                    if left != right:
-                        asymmetries.append(
-                            f"{case_id}: {field} is reported by only one side "
-                            f"({sides[0]}={left!r}, {side}={right!r})"
-                        )
-                    continue
                 if left != right:
                     differences.append(f"{field}: {sides[0]}={left!r} {side}={right!r}")
         for difference in differences:
@@ -126,13 +186,6 @@ def main(argv: list[str]) -> int:
     }
     for side, messages in harness.items():
         problems.extend(f"{side}: {message}" for message in messages)
-    if notes or asymmetries:
-        merged = {
-            side: list(messages) for side, messages in notes.items()
-        }
-        merged.setdefault("both sides", [])
-        merged["both sides"] = list(dict.fromkeys(merged["both sides"] + asymmetries))
-        notes = merged
 
     report = {
         "sides": sides,

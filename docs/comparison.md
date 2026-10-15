@@ -188,10 +188,14 @@ baseline never calls MoonNetlink and never parses human-readable `ip` output.
 `apply` without `--yes` prints exactly the same plan document as `plan`, so the
 dry-run property can be checked on both sides. Every attempted mutation is
 counted, so a repeated run that writes nothing is proven instead of inferred
-from the final state.
+from the final state. Both sides also emit `moonnetlink-mutation-attempts:<n>`
+on stderr, including plans and pre-write rejections. The runner requires this
+measurement; missing evidence fails acceptance.
 
 `apply` 未传 `--yes` 时输出与 `plan` 完全相同的计划文档，因此预演性质在双方都可校验。
-每次尝试的修改都被计数，因此重复执行零写入是经过证明的，而不是由最终状态推断。
+每次尝试的修改都被计数，因此重复执行零写入是经过证明的，而不是由最终状态推断。双方也在 stderr
+输出 `moonnetlink-mutation-attempts:<n>`，包括计划和写入前拒绝路径。运行器必须收到该
+测量值；缺少证据即验收失败。
 
 Two differences are already measured and recorded rather than hidden:
 
@@ -333,11 +337,53 @@ the run.
 
 The table also shows the side-specific checks: `cancellation` and
 `unknown-outcome` for the script baseline, `simulated-outcomes` for the
-application sample. Values that only one side reports appear as notes instead of
-failures, together with the differences recorded above.
+application sample. Side-specific checks appear as `n/a` on the other side. Required contract
+observations may not be omitted; only the documented diagnostic differences
+appear as notes.
 
 表格也显示各方特有的检查：脚本基线为 `cancellation` 与 `unknown-outcome`，应用样例为
-`simulated-outcomes`。只有一方报告的值以说明而非失败的形式呈现，并与上文记录的差异一起列出。
+`simulated-outcomes`。某侧专属检查在另一侧显示为 `n/a`。必需的契约观测不得缺失；只有文档声明的诊断差异
+以说明形式呈现。
+
+## Acceptance integrity / 验收完整性
+
+The Python runner exits before creating an implementation side or changing the
+fixture if namespace isolation is absent or matches the caller. Unknown case
+names and an empty selection are errors. The result comparer requires every
+requested contract case and each selected side's own extra checks exactly once;
+missing cases, failed statuses, malformed results and missing required
+observations fail even when both sides omit the same evidence. `--case` is
+passed to the comparer so an intentional subset remains verifiable.
+
+Python 运行器在命名空间隔离信息缺失或仍处于调用者命名空间时，会在创建实现侧实例及
+修改测试环境之前退出。未知用例名和空选择均为错误。汇总器要求所有请求的契约用例及各侧
+专属附加检查恰好出现一次；缺失用例、失败状态、格式错误和缺失必需观测均会失败，即使
+双方遗漏同一份证据也不例外。`--case` 同时传给汇总器，使有意缩小的范围仍可核验。
+
+The SDK counts mutation attempts immediately before the socket write in
+`RouteSocket.request_ack`; queries and failures before sending are excluded.
+`RouteClient.mutation_attempts` exposes the cumulative count. With a dedicated
+client, `RouteBackend` supplies it to reconciliation, whose report measures
+forward `attempted_writes` separately from `compensations`. A custom backend
+may implement `NetworkBackend.mutation_attempts`; its default returns `None`,
+and reports serialize unavailable counts as null rather than deriving them
+from completed or failed operations. Simulated runs separately prove zero real
+kernel writes through the application's stderr measurement.
+
+SDK 在 `RouteSocket.request_ack` 的 socket 写入之前记录修改尝试，不计查询和发送前
+失败。`RouteClient.mutation_attempts` 公开累计计数。使用独立 client 时，`RouteBackend`
+把该计数提供给协调器，报告分别测量正向 `attempted_writes` 和补偿 `compensations`。
+自定义后端可实现 `NetworkBackend.mutation_attempts`；默认返回 `None`，报告将不可用
+计数序列化为 null，不再从完成或失败操作推算。模拟运行另由应用的 stderr 测量值证明
+真实内核写入为零。
+
+Run the acceptance-integrity regression tests without privileges:
+
+以下验收完整性回归测试无需权限：
+
+```sh
+python3 -m unittest discover -s demo/compare -p test_acceptance.py
+```
 
 ## Status and limits / 当前状态与限制
 

@@ -4,6 +4,8 @@
 pub(open) trait NetworkBackend {
   async fn snapshot(Self) -> @state.NetworkSnapshot
   async fn execute(Self, @state.Change) -> Unit
+  /// Cumulative mutation sends from a dedicated backend; queries are excluded.
+  fn mutation_attempts(Self) -> Int? = _
 }
 
 ///|
@@ -19,7 +21,11 @@ pub fn RouteBackend::new(client : @transport.RouteClient) -> RouteBackend {
 }
 
 ///|
-pub extend RouteBackend with NetworkBackend::{snapshot, execute}
+pub extend RouteBackend with NetworkBackend::{
+  snapshot,
+  execute,
+  mutation_attempts,
+}
 
 ///|
 pub impl NetworkBackend for RouteBackend with fn snapshot(self) {
@@ -55,4 +61,15 @@ pub impl NetworkBackend for RouteBackend with fn execute(self, change) {
     AddRoute(spec~, ..) => self.client.add_route(spec, mode~)
     DeleteRoute(spec~, ..) => self.client.delete_route(spec)
   }
+}
+
+///|
+/// Backends without send instrumentation explicitly report unavailable counts.
+impl NetworkBackend with fn mutation_attempts(_) {
+  None
+}
+
+///|
+pub impl NetworkBackend for RouteBackend with fn mutation_attempts(self) {
+  Some(self.client.mutation_attempts())
 }

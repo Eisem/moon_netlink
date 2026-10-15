@@ -32,6 +32,7 @@ pub struct RouteSocket {
   source : @raw_fd.RawFd
   receive_capacity : Int
   mut closed : Bool
+  mut mutation_count : Int
 }
 
 ///|
@@ -89,7 +90,7 @@ pub async fn RouteSocket::open(
     @os_error.OSError(errno, ..) => raise TransportError::OpenFailed(errno~)
     err => raise err
   }
-  { source, receive_capacity, closed: false, }
+  { source, receive_capacity, closed: false, mutation_count: 0, }
 }
 
 ///|
@@ -179,6 +180,7 @@ pub async fn RouteSocket::request_ack(
   if self.closed {
     raise TransportError::ReadClosed
   }
+  self.mutation_count += 1
   let written = self.source.write(request)
   if written != request.length() {
     raise TransportError::ShortWrite(expected=request.length(), actual=written)
@@ -207,4 +209,11 @@ pub async fn RouteSocket::request_ack(
       }
     }
   }
+}
+
+///|
+/// Mutation send attempts, including kernel refusals and unknown outcomes.
+/// Queries, encoding errors and requests on a closed socket do not increment it.
+pub fn RouteSocket::mutation_attempts(self : RouteSocket) -> Int {
+  self.mutation_count
 }
