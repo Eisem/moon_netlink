@@ -1,0 +1,125 @@
+{
+  "contract_version": 1,
+  "purpose_en": "Fixed, implementation-neutral scenario, input subset, comparison fields and acceptance for the SDK and a script baseline. Both approaches must reach the same kernel state; neither side may change this contract to fit its own result.",
+  "purpose_zh": "SDK 与脚本基线共用的固定场景、输入范围、比较字段和验收标准。两种方式都必须达到相同的内核状态；任何一方都不得为了迁就自身结果而修改本契约。",
+  "status": {
+    "defined_by": "P5-V1",
+    "script_baseline": "pending (P5-V2/P5-V3)",
+    "sdk_application": "pending (P5-V4)",
+    "automated_verifier": "pending (P5-V5)",
+    "note_en": "This file defines the standard only; it does not implement either side.",
+    "note_zh": "本文件只定义标准，不实现任何一方。"
+  },
+  "topology": {
+    "namespace": "one disposable `unshare -Urn` user and network namespace per case",
+    "managed_interface": "cmpveth",
+    "peer_interface": "cmppeer",
+    "peer_is_unmanaged": true,
+    "managed_table": 1000,
+    "seed_commands": [
+      "ip link set lo up",
+      "ip link add cmpveth type veth peer name cmppeer",
+      "ip link set cmppeer up"
+    ],
+    "note_en": "The shared test facility creates the namespace, the veth pair and every case's initial state before either implementation runs. Neither the SDK nor the script baseline creates, renames or deletes interfaces; link creation is outside the supported subset of both sides.",
+    "note_zh": "共享测试设施在任一实现运行前创建命名空间、veth 对及每个用例的初始状态。SDK 和脚本基线都不创建、重命名或删除接口；链路创建不属于双方的受支持范围。"
+  },
+  "input_scope": {
+    "encoding": "UTF-8 JSON, at most 1 MiB, at most 64 nesting levels",
+    "root_keys": ["schema_version", "links", "addresses", "routes"],
+    "schema_version": 1,
+    "collection_limit": 1024,
+    "resource_keys": {
+      "link": ["name", "ensure", "up", "mtu"],
+      "address": ["interface", "ensure", "address", "prefix_length", "scope"],
+      "route": ["interface", "ensure", "destination", "prefix_length", "gateway", "table", "priority", "protocol", "scope"]
+    },
+    "required_keys": {
+      "link": ["name", "ensure"],
+      "address": ["interface", "ensure", "address", "prefix_length"],
+      "route": ["interface", "ensure", "destination", "prefix_length"]
+    },
+    "integer_fields": {
+      "mtu": {"minimum": 1, "maximum": 4294967295},
+      "prefix_length": {"minimum": 0, "maximum": 128},
+      "scope": {"minimum": 0, "maximum": 255},
+      "table": {"minimum": 0, "maximum": 4294967295},
+      "priority": {"minimum": 0, "maximum": 4294967295},
+      "protocol": {"minimum": 0, "maximum": 255}
+    },
+    "number_literals": "unsigned decimal integer literals only; no sign, decimal point or exponent",
+    "defaults": {
+      "address.scope": 0,
+      "route.table": 254,
+      "route.protocol": 4,
+      "route.priority": "as written (0 when omitted)",
+      "route.priority.ipv6_zero": 1024,
+      "route.scope.ipv4_without_gateway": 253,
+      "route.scope.otherwise": 0
+    },
+    "supported_resource_kinds": ["link mtu/up on an existing interface", "IPv4/IPv6 address add/delete", "unicast IPv4/IPv6 route add/delete with optional gateway, table and priority"],
+    "unsupported_by_both_sides": [
+      "link create/delete/rename",
+      "absent Link intent",
+      "peer address on an address resource",
+      "multipath routes",
+      "route rules, traffic control, netfilter, Wi-Fi or WireGuard families",
+      "neighbour mutation",
+      "authoritative deletion of undeclared host resources"
+    ],
+    "rejected_before_write": [
+      {"reason": "InvalidField", "example": "unknown key, missing key, wrong type, fraction or exponent, out-of-range integer, non-UTF-8 or oversized file"},
+      {"reason": "ConflictingIntent", "example": "duplicate link name, duplicate address identity, duplicate route identity, two present routes in the same destination/table/priority slot"},
+      {"reason": "MissingInterface", "example": "present address or route on an interface that does not exist"},
+      {"reason": "UnsupportedIntent", "example": "absent Link intent, which would require link deletion"},
+      {"reason": "UnsupportedCurrentResource", "example": "an existing address or route whose unsupported fields (peer address, source, input interface, tos, multipath) differ from the declared resource"},
+      {"reason": "ProtectedResource", "example": "loopback change or default-route change without explicit --dangerous"},
+      {"reason": "invalid interface name", "example": "empty name, name longer than the kernel limit, or a name containing NUL or '/'"}
+    ],
+    "rejection_timing_en": "Every rejection happens before the first mutation request. Parse-time rejections open no route socket.",
+    "rejection_timing_zh": "所有拒绝都发生在第一笔修改请求之前。解析阶段拒绝不会打开路由 socket。"
+  },
+  "comparison": {
+    "observations": [
+      {"name": "link", "command": "ip -j link show dev cmpveth", "fields": ["mtu", "whether flags contain UP"]},
+      {"name": "addresses", "command": "ip -j address show dev cmpveth", "fields": ["family", "local", "prefixlen"]},
+      {"name": "managed routes", "command": "ip -j -4 route show table 1000; ip -j -6 route show table 1000", "fields": ["dst", "gateway", "metric", "table"]},
+      {"name": "plan", "command": "ordered operation list and its length", "fields": ["operation kind", "interface", "typed parameters", "dangerous marker"]},
+      {"name": "report", "command": "structured report plus process exit status", "fields": ["exit status", "completed indices", "failed index and kernel errno", "not-executed indices", "compensation indices", "final verification result"]},
+      {"name": "kernel writes", "command": "number of mutation requests actually attempted", "fields": ["attempted mutation count", "attempted compensation count"]}
+    ],
+    "participating": [
+      {"field": "link mtu", "reason_en": "declared intent; a stable kernel attribute on both sides", "reason_zh": "显式意图；双方都能稳定读取的内核属性"},
+      {"field": "link administrative UP flag", "reason_en": "declared intent, independent of carrier and operstate", "reason_zh": "显式意图，与载波和运行状态无关"},
+      {"field": "address identity", "reason_en": "interface, family, local address and prefix length; scope must match the declared value", "reason_zh": "接口、协议族、本地地址和前缀长度；scope 必须与声明值一致"},
+      {"field": "managed route identity", "reason_en": "family, table, destination prefix, gateway and priority inside table 1000 only", "reason_zh": "仅表 1000 内的协议族、表、目的前缀、网关和优先级"},
+      {"field": "ordered plan", "reason_en": "operation sequence and length must be identical and deterministic for the same observation and target", "reason_zh": "同一观测与目标下，操作序列和长度必须一致且确定"},
+      {"field": "execution report", "reason_en": "exit status, completed/failed/not-executed indices, compensation indices and final verification", "reason_zh": "退出状态、完成/失败/未执行索引、补偿索引与最终验证"},
+      {"field": "kernel write attempts", "reason_en": "the only evidence that a repeated run wrote nothing; final state alone cannot show it", "reason_zh": "证明重复执行没有写入的唯一证据；仅凭最终状态无法说明"},
+      {"field": "preservation of pre-existing and unmanaged resources", "reason_en": "observed through the same independent commands before and after the run", "reason_zh": "通过运行前后相同的独立命令观测"}
+    ],
+    "excluded": [
+      {"field": "interface index", "reason_en": "allocated by the kernel per namespace and reused after deletion", "reason_zh": "由内核按命名空间分配，删除后会被复用"},
+      {"field": "MAC and other hardware addresses", "reason_en": "random for veth unless the fixture pins them; not a configured field of either side", "reason_zh": "veth 默认随机，除非测试固定；不是任何一方配置的字段"},
+      {"field": "operstate, carrier and derived flags such as LOWER_UP", "reason_en": "depend on the peer endpoint and on timing, not on the declared intent", "reason_zh": "取决于对端和时序，不取决于声明意图"},
+      {"field": "interface statistics counters", "reason_en": "change with unrelated traffic and time", "reason_zh": "随无关流量和时间变化"},
+      {"field": "IPv6 link-local addresses and kernel-generated host routes", "reason_zh": "内核自动生成，双方都不声明", "reason_en": "generated automatically by the kernel and declared by neither side"},
+      {"field": "address lifetimes and DAD state (valid_lft, preferred_lft, tentative)", "reason_en": "time-dependent, and IPv6 duplicate-address detection can make an address temporarily tentative", "reason_zh": "与时间相关，且 IPv6 重复地址检测会使地址暂时处于 tentative 状态"},
+      {"field": "kernel-generated connected routes in the main table", "reason_en": "a side effect of adding an address, not a declared resource", "reason_zh": "添加地址的副作用，不是声明的资源"},
+      {"field": "route linkdown marker and other peer-derived flags", "reason_en": "changing one veth endpoint's UP state changes the peer's carrier, which flips this marker while the configured route is unchanged", "reason_zh": "改变 veth 一端 UP 状态会改变对端载波，从而翻转该标记，而配置的路由并未变化"},
+      {"field": "neighbour entries", "reason_en": "populated by kernel traffic and reachability probes, and not configured by this contract", "reason_zh": "由内核流量和可达性探测填充，本契约不配置"},
+      {"field": "order in which the kernel returns objects", "reason_en": "both sides must normalize and sort before comparing", "reason_zh": "双方都必须先规范化并排序再比较"},
+      {"field": "wall-clock duration", "reason_en": "timing belongs to the separate performance baseline, not to this acceptance contract", "reason_zh": "耗时属于独立的性能基线，不属于本验收契约"}
+    ]
+  },
+  "cases": [
+    "cases/converge.json",
+    "cases/repeat.json",
+    "cases/preexisting.json",
+    "cases/unmanaged.json",
+    "cases/conflict.json",
+    "cases/protected-loopback.json",
+    "cases/protected-default-route.json",
+    "cases/failure.json"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "protected-loopback",
+  "kind": "reject",
+  "title_en": "Loopback change is refused unless explicitly allowed",
+  "title_zh": "未显式放行时回环修改被拒绝",
+  "intent_en": "Disabling lo is a critical-resource change. The plan must be rejected before any mutation, and lo must remain UP without an explicit --dangerous.",
+  "intent_zh": "关闭 lo 属于关键资源修改。未显式传入 --dangerous 时，计划必须在任何修改前被拒绝，lo 保持 UP。",
+  "desired": "../desired/protected-loopback.json",
+  "initial": {
+    "fixture": [],
+    "links": [
+      {"name": "cmpveth", "exists": true, "mtu": 1500, "up": false},
+      {"name": "cmppeer", "exists": true, "mtu": 1500, "up": true},
+      {"name": "lo", "exists": true, "mtu": 65536, "up": true}
+    ],
+    "present_addresses": [],
+    "present_routes": [],
+    "unmanaged": [
+      {
+        "kind": "address",
+        "identity": "address|cmppeer|203.0.114.2/24",
+        "command": "ip address add 203.0.114.2/24 dev cmppeer"
+      }
+    ]
+  },
+  "expected": {
+    "plan_steps": 0,
+    "operations": [],
+    "kernel_write_attempts": 0,
+    "compensation_attempts": 0,
+    "exit_status": "nonzero",
+    "completed": [],
+    "failed": null,
+    "not_executed": [],
+    "verification_satisfied": false,
+    "rejection": "ProtectedResource",
+    "protected_resource": {"kind": "link", "name": "lo"}
+  },
+  "final": {
+    "satisfied": [],
+    "remaining_steps": null,
+    "preserved": ["address|cmppeer|203.0.114.2/24"],
+    "state_unchanged": true
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "links": [
+    {"name": "lo", "ensure": "present", "up": false}
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "id": "protected-default-route",
+  "kind": "reject",
+  "title_en": "Default-route change is refused unless explicitly allowed",
+  "title_zh": "未显式放行时默认路由修改被拒绝",
+  "intent_en": "Adding an IPv4 default route is protected. The plan must be rejected before any mutation unless --dangerous is given explicitly.",
+  "intent_zh": "添加 IPv4 默认路由受保护。未显式传入 --dangerous 时，计划必须在任何修改前被拒绝。",
+  "desired": "../desired/protected-default-route.json",
+  "initial": {
+    "fixture": [],
+    "links": [
+      {"name": "cmpveth", "exists": true, "mtu": 1500, "up": false},
+      {"name": "cmppeer", "exists": true, "mtu": 1500, "up": true},
+      {"name": "lo", "exists": true, "mtu": 65536, "up": true}
+    ],
+    "present_addresses": [],
+    "present_routes": [],
+    "unmanaged": [
+      {
+        "kind": "address",
+        "identity": "address|cmppeer|203.0.114.2/24",
+        "command": "ip address add 203.0.114.2/24 dev cmppeer"
+      }
+    ]
+  },
+  "expected": {
+    "plan_steps": 0,
+    "operations": [],
+    "kernel_write_attempts": 0,
+    "compensation_attempts": 0,
+    "exit_status": "nonzero",
+    "completed": [],
+    "failed": null,
+    "not_executed": [],
+    "verification_satisfied": false,
+    "rejection": "ProtectedResource",
+    "protected_resource": {
+      "kind": "route",
+      "interface": "cmpveth",
+      "destination": "0.0.0.0",
+      "prefix_length": 0,
+      "gateway": null,
+      "table": 254,
+      "priority": 0
+    }
+  },
+  "final": {
+    "satisfied": [],
+    "remaining_steps": null,
+    "preserved": ["address|cmppeer|203.0.114.2/24"],
+    "state_unchanged": true
+  }
+}

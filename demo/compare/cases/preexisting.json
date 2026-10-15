@@ -1,0 +1,90 @@
+{
+  "id": "preexisting",
+  "kind": "apply",
+  "title_en": "Already satisfied intent is not rewritten",
+  "title_zh": "已满足的意图不会被重复写入",
+  "intent_en": "Part of the target already exists because the fixture created it. Only the genuinely missing resources may be written; the pre-existing managed resources and undeclared neighbours must remain exactly as they were.",
+  "intent_zh": "目标的一部分已由测试预置存在。只允许写入真正缺失的资源；预置的受管理资源和未声明资源必须保持原样。",
+  "desired": "../desired/converge.json",
+  "initial": {
+    "fixture": [
+      "ip link set cmpveth mtu 1400",
+      "ip link set cmpveth up",
+      "ip address add 192.0.2.10/24 dev cmpveth",
+      "ip route add 198.51.100.0/24 dev cmpveth table 1000 metric 42 proto static"
+    ],
+    "links": [
+      {"name": "cmpveth", "exists": true, "mtu": 1400, "up": true},
+      {"name": "cmppeer", "exists": true, "mtu": 1500, "up": true},
+      {"name": "lo", "exists": true, "mtu": 65536, "up": true}
+    ],
+    "present_addresses": [{"interface": "cmpveth", "address": "192.0.2.10", "prefix_length": 24, "scope": 0}],
+    "present_routes": [
+      {
+        "interface": "cmpveth",
+        "destination": "198.51.100.0",
+        "prefix_length": 24,
+        "gateway": null,
+        "table": 1000,
+        "priority": 42,
+        "protocol": 4,
+        "scope": 253
+      }
+    ],
+    "unmanaged": [
+      {
+        "kind": "address",
+        "identity": "address|cmpveth|203.0.113.5/24",
+        "command": "ip address add 203.0.113.5/24 dev cmpveth"
+      },
+      {
+        "kind": "route",
+        "identity": "route|cmpveth|table=254|203.0.115.0/24|gateway=none|priority=500",
+        "command": "ip route add 203.0.115.0/24 dev cmpveth metric 500 proto static"
+      }
+    ]
+  },
+  "expected": {
+    "plan_steps": 2,
+    "operations": [
+      {
+        "operation": "add_address",
+        "interface": "cmpveth",
+        "address": "2001:db8:10::10",
+        "prefix_length": 64,
+        "scope": 0
+      },
+      {
+        "operation": "add_route",
+        "interface": "cmpveth",
+        "destination": "2001:db8:20::",
+        "prefix_length": 64,
+        "gateway": null,
+        "table": 1000,
+        "priority": 43,
+        "protocol": 4,
+        "scope": 0
+      }
+    ],
+    "kernel_write_attempts": 2,
+    "compensation_attempts": 0,
+    "exit_status": 0,
+    "completed": [0, 1],
+    "failed": null,
+    "not_executed": [],
+    "verification_satisfied": true,
+    "rejection": null,
+    "protected_resource": null
+  },
+  "final": {
+    "satisfied": [
+      "link|cmpveth|mtu=1400|up=true",
+      "address|cmpveth|192.0.2.10/24",
+      "address|cmpveth|2001:db8:10::10/64",
+      "route|cmpveth|table=1000|198.51.100.0/24|gateway=none|priority=42",
+      "route|cmpveth|table=1000|2001:db8:20::/64|gateway=none|priority=43"
+    ],
+    "remaining_steps": 0,
+    "preserved": ["address|cmpveth|203.0.113.5/24", "route|cmpveth|table=254|203.0.115.0/24|gateway=none|priority=500"]
+  }
+}

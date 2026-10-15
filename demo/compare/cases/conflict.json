@@ -1,0 +1,45 @@
+{
+  "id": "conflict",
+  "kind": "reject",
+  "title_en": "Conflicting intent is rejected before any write",
+  "title_zh": "冲突意图在任何写入前被拒绝",
+  "intent_en": "Two link resources for the same interface name state different MTUs. The configuration must be refused during parsing, without opening a route socket or changing the interface.",
+  "intent_zh": "两个同名接口的链路资源声明了不同 MTU。配置必须在解析阶段被拒绝，不打开路由 socket，也不修改接口。",
+  "desired": "../desired/conflict.json",
+  "initial": {
+    "fixture": [],
+    "links": [
+      {"name": "cmpveth", "exists": true, "mtu": 1500, "up": false},
+      {"name": "cmppeer", "exists": true, "mtu": 1500, "up": true},
+      {"name": "lo", "exists": true, "mtu": 65536, "up": true}
+    ],
+    "present_addresses": [],
+    "present_routes": [],
+    "unmanaged": [
+      {
+        "kind": "address",
+        "identity": "address|cmppeer|203.0.114.2/24",
+        "command": "ip address add 203.0.114.2/24 dev cmppeer"
+      }
+    ]
+  },
+  "expected": {
+    "plan_steps": 0,
+    "operations": [],
+    "kernel_write_attempts": 0,
+    "compensation_attempts": 0,
+    "exit_status": "nonzero",
+    "completed": [],
+    "failed": null,
+    "not_executed": [],
+    "verification_satisfied": false,
+    "rejection": "ConflictingIntent",
+    "protected_resource": null
+  },
+  "final": {
+    "satisfied": [],
+    "remaining_steps": null,
+    "preserved": ["address|cmppeer|203.0.114.2/24"],
+    "state_unchanged": true
+  }
+}

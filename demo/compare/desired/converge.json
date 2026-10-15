@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "links": [
+    {"name": "cmpveth", "ensure": "present", "up": true, "mtu": 1400}
+  ],
+  "addresses": [
+    {"interface": "cmpveth", "ensure": "present", "address": "192.0.2.10", "prefix_length": 24},
+    {"interface": "cmpveth", "ensure": "present", "address": "2001:db8:10::10", "prefix_length": 64}
+  ],
+  "routes": [
+    {"interface": "cmpveth", "ensure": "present", "destination": "198.51.100.0", "prefix_length": 24, "table": 1000, "priority": 42},
+    {"interface": "cmpveth", "ensure": "present", "destination": "2001:db8:20::", "prefix_length": 64, "table": 1000, "priority": 43}
+  ]
+}

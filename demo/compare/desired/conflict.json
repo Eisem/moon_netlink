@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "links": [
+    {"name": "cmpveth", "ensure": "present", "mtu": 1400},
+    {"name": "cmpveth", "ensure": "present", "mtu": 1300}
+  ]
+}
