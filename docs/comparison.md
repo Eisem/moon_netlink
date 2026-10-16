@@ -20,6 +20,68 @@ same acceptance rules.
 两种方式都能达到相同的内核状态。因此比较并不主张其中一方是唯一可行方案；它衡量的是
 在同一验收规则下达到同样可观测结果时，各方需要实现和声明的内容。
 
+## Choosing and integrating an approach / 方案选择与接入
+
+Use a Bash/iproute2 script when the target is a small, fixed setup and the calling
+environment already uses processes and JSON. This baseline also implements strict
+input handling, idempotence and best-effort recovery; these are achievable without
+the SDK. Use MoonNetlink when the caller is a MoonBit application that needs typed
+queries/events or a reusable plan/apply/report workflow. Its concrete benefit here
+is moving shared networking responsibilities behind public APIs while leaving
+application policy in the caller. This sample does not measure developer time,
+maintenance cost, throughput or latency, and does not prove every application
+needs a library.
+
+目标是小型固定配置、调用环境本就使用进程及 JSON 时，可选择 Bash/iproute2 脚本。
+本基线也实现严格输入处理、幂等性和尽力恢复，这些能力无需 SDK 也能做到。调用方是需要
+类型化查询、事件或复用 plan/apply/report 流程的 MoonBit 应用时，可选择 MoonNetlink。
+此处可核查的收益是把共用网络职责放到公共 API 后面，业务策略仍由应用决定。样例没有
+测量开发时间、维护成本、吞吐量或延迟，也不证明每个应用都需要库。
+
+| Owner / 负责方 | Responsibilities / 职责 | Source evidence / 源码证据 |
+| --- | --- | --- |
+| Upstream async / 上游 async | Tasks, cancellation shielding, mutex and nonblocking fd I/O; no RTNetlink state model / 任务、取消保护、互斥锁及非阻塞 fd I/O，不提供 RTNetlink 状态模型 | Pinned `moonbitlang/async@0.22.1` in [moon.mod](../moon.mod); use in [client](../transport/client.mbt) and [executor](../reconcile/apply.mbt) / 固定依赖及调用点 |
+| MoonNetlink / 本库 | Binary protocol and typed objects; socket requests; strict desired state, plans and protection; ordered execution, recovery and verification / 二进制协议、类型化对象、socket 请求、严格目标状态、计划与保护、顺序执行、恢复及核验 | [core](../core/message.mbt), [route](../route/link.mbt), [transport](../transport/client.mbt), [state](../state/plan.mbt), [reconcile](../reconcile/verify.mbt) |
+| Application / 应用 | Read target, choose confirmation, judge report, present result, close client / 读取目标、选择确认、判断报告、展示结果、关闭 client | `read_desired`, `show_plan`, `conditions_of`, `classify`, `emit`, `run` in [main.mbt](../examples/network_config_app/main.mbt) |
+
+The following inventory counts responsibility boundaries rather than source lines.
+Include all these parts when evaluating integration: omitting the Python helper
+would understate the script, and counting the entire SDK as application glue would
+hide the reusable dependency. Neither side gets its fixture or assertions for free.
+
+下表核对职责边界，不统计源码行数。评估接入时应包括全部部分：省略 Python 工具会低估
+脚本实现，把整个 SDK 计为应用胶水代码则会掩盖可复用依赖；双方的环境预置与断言也都需要维护。
+
+| Part / 部分 | Concrete files / 实际文件 | Work owned / 承担工作 |
+| --- | --- | --- |
+| Application integration / 应用接入 | [main.mbt](../examples/network_config_app/main.mbt), [moon.pkg](../examples/network_config_app/moon.pkg) | CLI/file policy, report decisions and lifetime; calls public state/transport/reconcile APIs / 参数与文件策略、报告判定及生命周期，调用公共 API |
+| Application test backend / 应用测试后端 | [simulated.mbt](../examples/network_config_app/simulated.mbt) | Four labelled failure simulations, not real kernel failures / 四类明确标注的失败模拟，不是真实内核失败 |
+| Script orchestration / 脚本编排 | [baseline.sh](../demo/compare/script/baseline.sh) | Confirmation, quoted argv execution, stop/cancel boundaries, counters and reverse recovery / 确认、正确引用参数执行、失败及取消边界、计数与倒序恢复 |
+| Script helper / 脚本辅助工具 | [json_tool.py](../demo/compare/script/json_tool.py) | Validation, observation normalization, planning, command/inverse generation, reports and final comparison / 校验、观测规范化、规划、命令与逆操作生成、报告及最终比较 |
+| Shared test facility / 共享测试设施 | [contract](../demo/compare/contract.json), [contract checker](../demo/compare/check_contract.py), [cases](../demo/compare/cases/converge.json), [runner](../demo/compare/run_cases.py), [check.sh](../demo/compare/check.sh) | Expected state and plans, isolated topology, independent iproute2 observations, process adapters and assertions / 预期状态及计划、隔离拓扑、独立 iproute2 观测、进程适配与断言 |
+| Shared acceptance / 共享验收 | [run.sh](../demo/compare/run.sh), [compare_results.py](../demo/compare/compare_results.py), [regressions](../demo/compare/test_acceptance.py) | Bound both sides, save results, enforce coverage/status/observations and reject false passes / 双方限时、保存结果、检查覆盖及状态与观测、防止误通过 |
+| Reusable library / 可复用库 | [core](../core/message.mbt), [route](../route/mutation.mbt), [transport](../transport/socket.mbt), [state](../state/plan.mbt), [reconcile](../reconcile/apply.mbt), [rollback](../reconcile/rollback.mbt), [verification](../reconcile/verify.mbt) | Shared binary/model/lifecycle/plan/report behavior used by the sample and CLI / 样例及 CLI 共用的协议、模型、生命周期、计划和报告实现 |
+
+## Claims and reproducible evidence / 结论与可复现证据
+
+| Claim / 结论 | Reproduce or inspect / 复现或查看 | Boundary / 边界 |
+| --- | --- | --- |
+| Both sides reach the same managed state / 双方达到相同受管理状态 | `bash demo/compare/run.sh --case converge`; [case](../demo/compare/cases/converge.json), `run_case` and `observe` in [runner](../demo/compare/run_cases.py) | Compares declared stable fields; does not compare every kernel byte / 比较声明的稳定字段，不逐字节比较内核 |
+| An already satisfied target writes nothing / 已满足目标零写入 | `bash demo/compare/run.sh --case repeat`; [repeat fixture](../demo/compare/cases/repeat.json); socket send counter in [transport](../transport/socket.mbt) | Repeat starts from a reseeded converged topology; it does not continue the previous apply / repeat 使用重新预置的已收敛拓扑，不接续前一用例的 apply |
+| First failure stops, then acknowledged steps are compensated / 首次失败停止并补偿已确认步骤 | `bash demo/compare/run.sh --case failure`; [failure case](../demo/compare/cases/failure.json) and [rollback](../reconcile/rollback.mbt) | Kernel errno 101 is checked on the SDK side; script preserves iproute2 diagnostic text; best effort, not atomic / SDK 核对 errno 101，脚本保留 iproute2 原始诊断；尽力恢复，非原子 |
+| Acknowledgements alone do not mean application success / 仅有确认不代表应用成功 | `bash demo/compare/check.sh --side app --case converge`; `simulated_check` in [runner](../demo/compare/run_cases.py), `classify` in [application](../examples/network_config_app/main.mbt) | `simulated:target-unmet` acknowledges all operations but fails final verification; no real mutations / 该模拟确认全部操作但最终核验失败，不发送真实修改 |
+| Callers can distinguish failure conditions / 调用方可区分失败条件 | Four raw application documents in the [walkthrough](demo.md); [simulation backend](../examples/network_config_app/simulated.mbt) | Deterministic simulations exercise business decisions, not every possible live failure / 确定性模拟用于业务判定，不代表覆盖所有真实失败 |
+
+The [presentation sequence](demo.md) uses one selected-case run and reads its saved
+results; a full `bash demo/compare/run.sh` remains the complete contract acceptance.
+The older [continuous reconcile demo](../demo/reconcile.sh) additionally executes
+first apply and a second empty plan in the same namespace. The two demonstrations
+answer different reproducibility questions; neither is a performance benchmark.
+
+[演示流程](demo.md)运行一次选定用例并读取保存结果；完整契约仍通过 `bash demo/compare/run.sh`
+验收。[连续 reconcile 演示](../demo/reconcile.sh)另在同一命名空间执行首次 apply 和第二次
+空计划。两种演示验证不同的复现问题，都不是性能基准。
+
 ## Shared scenario / 共同场景
 
 Every case runs in its own disposable `unshare -Urn` user and network namespace.
@@ -391,15 +453,20 @@ This page defines the standard. The script baseline (P5-V2/P5-V3), the MoonBit
 application sample (P5-V4) and the two-sided entry point (P5-V5) are implemented
 and checked against the contract, including reverse compensation,
 unknown-outcome reporting, simulated failure handling and cross-side agreement.
-The publishable value narrative and the five-minute demonstration flow (P5-V6)
-are not written yet, so this document still makes no claim about the two sides'
-relative cost or maintainability, and the separate performance baseline remains
-outstanding. Performance measurements stay out of this acceptance contract.
+本页定义标准。脚本基线、MoonBit 应用样例及双方验收入口已实现并按契约校验，包含逆序
+补偿、结果不明报告、模拟失败处理及双方一致性核对。
 
-本页定义标准。脚本基线（P5-V2/P5-V3）、MoonBit 应用样例（P5-V4）和双方入口（P5-V5）
-已实现并按契约校验，包含逆序补偿、结果不明报告、模拟失败处理和双方一致性核对。可发布的
-价值说明与约五分钟演示流程（P5-V6）尚未撰写，因此本文仍不对双方的相对成本或可维护性作
-任何主张，独立的性能基线也仍待完成。性能测量不属于本验收契约。
+The value narrative and responsibility inventory above accompany the
+[five-minute walkthrough](demo.md). They make no quantitative claim about
+relative development cost or speed. The separate performance baseline remains
+outstanding; performance measurements stay out of this acceptance contract.
+The sample is built from this checkout, not independently installed from a
+published Mooncakes version. It runs one reconciliation at a time; it is not a
+resident repair controller or a complete CNI implementation.
+
+本页的价值说明及职责清单配套[约五分钟演示流程](demo.md)，不定量宣称相对开发成本或
+速度优势。独立性能基线仍待完成，不属于本验收契约。样例从当前源码构建，尚不等于从
+已发布 Mooncakes 版本独立安装验证；它执行单次协调，不是常驻自动修复控制器或完整 CNI。
 
 The expected outcome of the `failure` case depends on the tested kernel
 returning errno 101 for an unreachable gateway; the isolated verification

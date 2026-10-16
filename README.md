@@ -55,6 +55,39 @@ through the public APIs.
 
 原生文件描述符所有权和可疑截断时拒绝结果的策略见 [传输层说明](./docs/transport.md)。独立于传输层的消息、属性、控制消息规则见 [核心协议说明](./docs/core.md)。类型化模型覆盖范围与校验规则见 [模型说明](./docs/route.md)。查询、事件 CLI 与确定性 JSON 约定见 [CLI 说明](./docs/cli.md)。Linux 下与 `ip -j` 的可复现对拍见 [差分验证说明](./docs/differential.md)。目标配置 schema、快照与纯规划 API 见 [状态模型说明](./docs/state.md)。顺序执行和部分失败报告见 [收敛执行说明](./docs/reconcile.md)。固定 seed 畸形输入检查与运行预算见 [健壮性说明](./docs/robustness.md)。与脚本基线共用的场景、输入范围、比较字段和验收标准见 [对照契约](./docs/comparison.md)；该页也说明 `examples/network_config_app/` 应用样例如何通过公共 API 读取目标、审查计划、执行并判断报告。
 
+## When to use it / 何时使用
+
+For a small, fixed Linux setup, Bash with iproute2 is a reasonable choice: the
+[baseline](demo/compare/script/baseline.sh) reaches the same declared state,
+checks repeated execution and compensates known completed steps. A MoonBit
+application that repeatedly observes or configures networking can instead use
+public typed APIs and consume an `ApplyReport` in process. In the
+[application sample](examples/network_config_app/main.mbt), the application owns
+confirmation, business decisions and resource lifetime; the library owns
+protocol handling, planning, protection, execution, compensation and checking
+the final state. Upstream `moonbitlang/async` supplies tasks, cancellation,
+mutexes and descriptor I/O; MoonNetlink does not replace that runtime.
+
+对于小型、固定的 Linux 配置，Bash 配合 iproute2 是合理选择：[脚本基线](demo/compare/script/baseline.sh)
+同样能达到声明状态、检查重复执行，并补偿已确认的步骤。需要反复观测或配置网络的 MoonBit
+应用可以使用公开的类型化 API，在进程内消费 `ApplyReport`。[应用样例](examples/network_config_app/main.mbt)
+负责确认、业务判定及资源生命周期；库负责协议处理、规划、保护、执行、补偿和最终状态核验。
+上游 `moonbitlang/async` 提供任务、取消、互斥锁和文件描述符 I/O；MoonNetlink 复用该运行时。
+
+The [responsibility and evidence tables](docs/comparison.md) include the script's
+Python helper, application failure simulations, shared test facility and reusable
+library code. They support a comparison of integration responsibilities, not a
+line-count multiplier or an unmeasured speed claim. Follow the
+[five-minute walkthrough](docs/demo.md) to inspect equivalent results, zero-write
+repetition, a real mid-plan failure and application decisions. Build and dependency
+setup happen before the presentation; five minutes is a narration budget, not
+a measured execution guarantee.
+
+[职责与证据表](docs/comparison.md)同时列出脚本的 Python 辅助工具、应用失败模拟、共享
+测试设施及库内复用代码，用于核对接入职责，不用单一行数推算效率倍数，也不宣称未测量的
+性能优势。[约五分钟演示流程](docs/demo.md)依次展示相同结果、重复执行零写入、真实中途
+失败和应用判定。构建及依赖准备在演示前完成；五分钟是讲解预算，不是实测执行时限。
+
 ## CLI / 命令行
 
 Build and test from a checkout with the MoonBit toolchain and a C compiler:
