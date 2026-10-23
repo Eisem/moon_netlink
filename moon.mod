@@ -17,3 +17,5 @@ keywords = [ "linux", "netlink", "rtnetlink", "networking" ]
 import {
   "moonbitlang/async@0.22.1",
 }
+
+repository = "https://github.com/Eisem/moon_netlink"

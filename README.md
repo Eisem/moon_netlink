@@ -88,6 +88,18 @@ a measured execution guarantee.
 性能优势。[约五分钟演示流程](docs/demo.md)依次展示相同结果、重复执行零写入、真实中途
 失败和应用判定。构建及依赖准备在演示前完成；五分钟是讲解预算，不是实测执行时限。
 
+## Install / 安装
+
+Published package: `eisem/moonnetlink@0.1.0` (Linux/native, C compiler required).
+See [release and downstream validation](docs/release.md) for imports and checks.
+
+已发布包：`eisem/moonnetlink@0.1.0`（Linux/native，需要 C 编译器）。
+导入方式及验证说明见[发布与下游验证](docs/release.md)。
+
+```sh
+moon add eisem/moonnetlink@0.1.0
+```
+
 ## CLI / 命令行
 
 Build and test from a checkout with the MoonBit toolchain and a C compiler:

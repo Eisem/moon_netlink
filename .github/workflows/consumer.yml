@@ -1,0 +1,18 @@
+name: Published package consumer
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+permissions:
+  contents: read
+jobs:
+  consumer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh -o /tmp/install-moon.sh
+          bash /tmp/install-moon.sh 0.1.20260920
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - run: bash .ci/validate-consumer.sh
