@@ -16,6 +16,7 @@ SHA
 mkdir -p "$destination/lib"
 tar -xzf "$download/toolchain.tar.gz" -C "$destination"
 tar -xzf "$download/core.tar.gz" -C "$destination/lib"
+chmod +x "$destination"/bin/* "$destination/bin/internal/tcc"
 export PATH="$destination/bin:$PATH"
 moon version
 moon -C "$destination/lib/core" bundle --warn-list -a --all
