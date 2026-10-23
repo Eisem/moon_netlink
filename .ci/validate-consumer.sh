@@ -2,16 +2,18 @@
 # This project lives outside the source checkout and resolves the registry version.
 set -euo pipefail
 repo_root=$(cd "$(dirname "$0")/.." && pwd)
+version=${MOONNETLINK_CONSUMER_VERSION:-0.1.1}
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 consumer=$(mktemp -d)
 trap 'rm -rf -- "$consumer"' EXIT
 mkdir -p "$consumer/cmd/main"
 mkdir -p "$consumer/cmd/app" "$consumer/cmd/monitor"
-cat > "$consumer/moon.mod" <<'MOD'
+cat > "$consumer/moon.mod" <<MOD
 name = "moonnetlink-consumer/smoke"
 version = "0.1.0"
 preferred_target = "native"
 import {
-  "eisem/moonnetlink@0.1.0",
+  "eisem/moonnetlink@$version",
   "moonbitlang/async@0.22.1",
 }
 MOD

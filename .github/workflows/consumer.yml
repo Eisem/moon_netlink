@@ -1,6 +1,11 @@
 name: Published package consumer
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Published Mooncakes version
+        default: '0.1.1'
+        required: true
   release:
     types: [published]
 permissions:
@@ -8,6 +13,8 @@ permissions:
 jobs:
   consumer:
     runs-on: ubuntu-24.04
+    env:
+      MOONNETLINK_CONSUMER_VERSION: ${{ inputs.version || '0.1.1' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4

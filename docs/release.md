@@ -15,23 +15,25 @@ BUILD.txt, RUNTIME.txt and the toolchain lock. Verify checksums before running i
 sha256sum --check SHA256SUMS
 ```
 
-`eisem/moonnetlink@0.1.0` is published on Mooncakes. It requires the native backend,
+`eisem/moonnetlink@0.1.1` is published on Mooncakes. It requires the native backend,
 a C compiler and Linux for live networking. The tested toolchain is MoonBit
-`0.1.20260920`, with `moonbitlang/async@0.22.1`.
+`0.1.20261021`, with `moonbitlang/async@0.22.1`. Version 0.1.1 requires a
+toolchain supporting Int32/UInt32; the older 0.1.20260920 toolchain cannot compile it.
 The current source checkout and CI use `0.1.20261021` and its canonical
 `Int32`/`UInt32` type names and defaulted labeled parameter syntax. The published
 `0.1.0` archive remains unchanged; its independent consumer passes on this newer
 toolchain too.
 
-`eisem/moonnetlink@0.1.0` 已发布至 Mooncakes。真实网络操作要求 Linux、native
-后端和 C 编译器。已测试工具链为 MoonBit `0.1.20260920`，依赖为
+`eisem/moonnetlink@0.1.1` 已发布至 Mooncakes。真实网络操作要求 Linux、native
+后端和 C 编译器。已测试工具链为 MoonBit `0.1.20261021`，依赖为
 `moonbitlang/async@0.22.1`。
+0.1.1 要求支持 Int32/UInt32 的工具链；旧版 0.1.20260920 无法编译该版本。
 当前源码及 CI 使用 `0.1.20261021`，采用其规范的 `Int32`/`UInt32` 类型名及
 带默认值的标签参数语法。已发布的 `0.1.0` 归档保持不变，其独立 consumer
 也已在该新版工具链上通过。
 
 ```sh
-moon add eisem/moonnetlink@0.1.0
+moon add eisem/moonnetlink@0.1.1
 ```
 
 Import the packages your application uses in `moon.pkg`:
@@ -74,7 +76,7 @@ fails the job. Workflow configuration is not evidence of a successful remote run
 任务失败。工作流配置本身不代表远程执行已经通过。
 
 `.ci/validate-consumer.sh` creates a temporary standalone module outside this
-checkout, installs exactly version `0.1.0` from the registry, builds its C shim and
+checkout, installs exactly version `0.1.1` from the registry, builds its C shim and
 queries live Linux links through public APIs. In a disposable namespace it also
 checks dry-run, IPv4/IPv6 address and route configuration, a typed MTU event,
 zero-operation repetition, deletion, unmanaged address preservation and loopback
@@ -86,7 +88,7 @@ not silently skip the mutation scenarios. All subprocesses have bounded waits,
 and temporary files and monitor processes are cleaned up on failure.
 
 `.ci/validate-consumer.sh` 在检出目录外创建临时独立模块，从注册表安装固定版本
-`0.1.0`，构建其 C shim，并通过公共 API 查询真实 Linux 链路。在临时命名空间中
+`0.1.1`，构建其 C shim，并通过公共 API 查询真实 Linux 链路。在临时命名空间中
 还验证 dry-run、IPv4/IPv6 地址及路由配置、类型化 MTU 事件、重复执行零操作、
 删除、未管理地址保留，以及零修改尝试的回环接口保护。仅复制应用示例及监听探针，
 不复制 SDK 实现，也不使用本地依赖替代。它需要注册表可访问且索引已同步。

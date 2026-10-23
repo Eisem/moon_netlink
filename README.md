@@ -90,14 +90,14 @@ a measured execution guarantee.
 
 ## Install / 安装
 
-Published package: `eisem/moonnetlink@0.1.0` (Linux/native, C compiler required).
+Published package: `eisem/moonnetlink@0.1.1` (Linux/native, C compiler required).
 See [release and downstream validation](docs/release.md) for imports and checks.
 
-已发布包：`eisem/moonnetlink@0.1.0`（Linux/native，需要 C 编译器）。
+已发布包：`eisem/moonnetlink@0.1.1`（Linux/native，需要 C 编译器）。
 导入方式及验证说明见[发布与下游验证](docs/release.md)。
 
 ```sh
-moon add eisem/moonnetlink@0.1.0
+moon add eisem/moonnetlink@0.1.1
 ```
 
 ## CLI / 命令行
