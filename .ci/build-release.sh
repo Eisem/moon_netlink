@@ -30,8 +30,8 @@ cp "$moon_home/CREDITS.md" "$stage/$name/licenses/toolchain-CREDITS.md"
   echo "built_at_source_epoch=$(git log -1 --format=%ct)"
   uname -srmo
   moon version --all
-  cc --version | head -1
-  ldd --version | head -1
+  cc --version
+  ldd --version
 } > "$stage/$name/BUILD.txt"
 ldd "$stage/$name/moonnet" > "$stage/$name/RUNTIME.txt"
 "$stage/$name/moonnet" link show --json | python3 -c 'import json,sys; x=json.load(sys.stdin); assert any(r["name"] == "lo" for r in x)'
