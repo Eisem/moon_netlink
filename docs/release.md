@@ -46,17 +46,24 @@ fails the job. Workflow configuration is not evidence of a successful remote run
 
 `.ci/validate-consumer.sh` creates a temporary standalone module outside this
 checkout, installs exactly version `0.1.0` from the registry, builds its C shim and
-queries live Linux links through public APIs. Only the application example is
-copied; no SDK implementation or local dependency override is used. It requires
+queries live Linux links through public APIs. In a disposable namespace it also
+checks dry-run, IPv4/IPv6 address and route configuration, a typed MTU event,
+zero-operation repetition, deletion, unmanaged address preservation and loopback
+protection with zero mutation attempts. Only application examples and the monitor
+probe are copied; no SDK implementation or local dependency override is used. It requires
 registry availability and index propagation. The consumer workflow runs manually
-or after a GitHub release. It currently checks queries; published-package monitor
-and isolated configuration acceptance remain future checks.
+or after a GitHub release. Namespace creation failure fails the check; it does
+not silently skip the mutation scenarios. All subprocesses have bounded waits,
+and temporary files and monitor processes are cleaned up on failure.
 
 `.ci/validate-consumer.sh` 在检出目录外创建临时独立模块，从注册表安装固定版本
-`0.1.0`，构建其 C shim，并通过公共 API 查询真实 Linux 链路。仅复制应用示例，
+`0.1.0`，构建其 C shim，并通过公共 API 查询真实 Linux 链路。在临时命名空间中
+还验证 dry-run、IPv4/IPv6 地址及路由配置、类型化 MTU 事件、重复执行零操作、
+删除、未管理地址保留，以及零修改尝试的回环接口保护。仅复制应用示例及监听探针，
 不复制 SDK 实现，也不使用本地依赖替代。它需要注册表可访问且索引已同步。
-consumer 工作流支持手动运行及 GitHub release 后运行。目前验证查询；发布包的
-监听与隔离配置验收仍待补齐。
+consumer 工作流支持手动运行及 GitHub release 后运行。命名空间创建失败会使
+检查失败，不会静默跳过修改场景。所有子进程均有等待上限，失败时清理临时文件及
+监听进程。
 
 ```sh
 bash .ci/validate-consumer.sh
