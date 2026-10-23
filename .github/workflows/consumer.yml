@@ -12,8 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh -o /tmp/install-moon.sh
-          bash /tmp/install-moon.sh 0.1.20260920
+          bash .ci/install-toolchain.sh
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - run: sudo apt-get update && sudo apt-get install -y build-essential iproute2 python3 util-linux
       - name: Permit isolated user namespaces on runner

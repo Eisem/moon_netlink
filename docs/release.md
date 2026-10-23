@@ -36,12 +36,19 @@ The `core` and `route` packages expose protocol codecs and typed models.
 ## Automated checks / 自动检查
 
 `.github/workflows/ci.yml` checks formatting, compilation, builds, tests and public
-interfaces on Ubuntu 24.04 with a fixed toolchain. Kernel acceptance and the
+interfaces on Ubuntu 24.04. `.ci/install-toolchain.sh` verifies SHA256 digests of
+the official Linux toolchain and core archives before extraction. Their `latest`
+URLs are mutable: a changed archive fails CI until both digests are deliberately
+reviewed and updated. Historical `0.1.20260920` downloads returned HTTP 403.
+Kernel acceptance and the
 comparison scenario run in disposable user/network namespaces. Namespace failure
 fails the job. Workflow configuration is not evidence of a successful remote run.
 
-`.github/workflows/ci.yml` 在 Ubuntu 24.04 使用固定工具链检查格式、编译、构建、
-测试与公共接口。内核验收与对照场景运行于临时用户及网络命名空间；创建失败会使
+`.github/workflows/ci.yml` 在 Ubuntu 24.04 检查格式、编译、构建、测试与公共接口。
+`.ci/install-toolchain.sh` 在解压前校验官方 Linux 工具链及 core 归档的 SHA256。
+`latest` URL 内容可能变化；归档变化将使 CI 失败，直到审查并更新两个摘要。
+历史 `0.1.20260920` 下载返回 HTTP 403。
+内核验收与对照场景运行于临时用户及网络命名空间；创建失败会使
 任务失败。工作流配置本身不代表远程执行已经通过。
 
 `.ci/validate-consumer.sh` creates a temporary standalone module outside this
