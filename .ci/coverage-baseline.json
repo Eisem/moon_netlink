@@ -1,0 +1,22 @@
+{
+  "core": {
+    "covered": 126,
+    "total": 136
+  },
+  "route": {
+    "covered": 373,
+    "total": 428
+  },
+  "state": {
+    "covered": 327,
+    "total": 392
+  },
+  "transport": {
+    "covered": 120,
+    "total": 198
+  },
+  "reconcile": {
+    "covered": 101,
+    "total": 134
+  }
+}

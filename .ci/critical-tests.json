@@ -1,0 +1,11 @@
+[
+  ["core/control_test.mbt", "decode malformed error is structured truncation"],
+  ["transport/response_wbtest.mbt", "dump interruption on body is remembered until a later DONE"],
+  ["transport/monitor_wbtest.mbt", "monitor preserves batched events and fails on overrun or malformed data"],
+  ["transport/monitor_wbtest.mbt", "live monitor cancellation leaves the independent socket reusable"],
+  ["state/safety_test.mbt", "loopback protection recomputes names and flags despite forged markers"],
+  ["reconcile/apply_test.mbt", "cancellation accounts for in-flight ACK and stops remaining operations"],
+  ["reconcile/apply_test.mbt", "timeout preserves typed cause and reports uncertain mutation outcome"],
+  ["reconcile/rollback_test.mbt", "rollback failure does not replace original cause or stop later compensations"],
+  ["reconcile/verify_test.mbt", "final verification detects ineffective ACK and exposes unmet plan"]
+]
