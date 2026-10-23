@@ -15,7 +15,7 @@ pub extend ResourceIntent with Eq::{equal, not_equal}
 /// Observation of exactly one explicitly managed resource.
 pub(all) struct IntentStatus {
   intent : ResourceIntent
-  interface_index : Int?
+  interface_index : Int32?
   exists : Bool
   satisfied : Bool
 } derive(Debug, Eq)
@@ -31,7 +31,7 @@ fn resolve_interface(
   snapshot : NetworkSnapshot,
   name : String,
   ensure : Ensure,
-) -> Int? raise StateError {
+) -> Int32? raise StateError {
   match snapshot.link_by_name(name) {
     Some(link) => Some(link.index)
     None if ensure == Absent => None
@@ -51,7 +51,7 @@ fn local_ip(address : @route.Address) -> @route.IpAddress? {
 fn route_matches(
   current : @route.Route,
   desired : DesiredRoute,
-  index : Int,
+  index : Int32,
 ) -> Bool {
   route_destination(current) == Some(desired.destination.to_string()) &&
   current.destination_prefix_length == desired.prefix_length &&

@@ -6,9 +6,9 @@ import {
 }
 
 // Values
-pub fn align4(Int) -> Int
+pub fn align4(Int32) -> Int32
 
-pub fn decode_attributes(BytesView, Int) -> Array[NetlinkAttribute] raise CodecError
+pub fn decode_attributes(BytesView, Int32) -> Array[NetlinkAttribute] raise CodecError
 
 pub fn decode_control(NetlinkMessage) -> NetlinkControl? raise CodecError
 
@@ -24,7 +24,7 @@ pub let nla_f_nested : UInt16
 
 pub let nla_f_net_byteorder : UInt16
 
-pub let nla_header_length : Int
+pub let nla_header_length : Int32
 
 pub let nla_type_mask : UInt16
 
@@ -32,31 +32,31 @@ pub let nlmsg_done : UInt16
 
 pub let nlmsg_error : UInt16
 
-pub let nlmsg_header_length : Int
+pub let nlmsg_header_length : Int32
 
 pub let nlmsg_noop : UInt16
 
 pub let nlmsg_overrun : UInt16
 
-pub fn read_i32_le(BytesView, Int) -> Int raise CodecError
+pub fn read_i32_le(BytesView, Int32) -> Int32 raise CodecError
 
-pub fn read_u16_le(BytesView, Int) -> UInt16 raise CodecError
+pub fn read_u16_le(BytesView, Int32) -> UInt16 raise CodecError
 
-pub fn read_u32_le(BytesView, Int) -> UInt raise CodecError
+pub fn read_u32_le(BytesView, Int32) -> UInt32 raise CodecError
 
-pub fn write_u16_le(FixedArray[Byte], Int, UInt16) -> Unit
+pub fn write_u16_le(FixedArray[Byte], Int32, UInt16) -> Unit
 
-pub fn write_u32_le(FixedArray[Byte], Int, UInt) -> Unit
+pub fn write_u32_le(FixedArray[Byte], Int32, UInt32) -> Unit
 
 // Errors
 pub(all) suberror CodecError {
-  InvalidOffset(context~ : String, offset~ : Int)
-  Truncated(context~ : String, offset~ : Int, needed~ : Int, available~ : Int)
-  InvalidLength(context~ : String, length~ : UInt, minimum~ : Int)
-  LengthTooLarge(context~ : String, length~ : UInt)
-  LengthExceedsLimit(context~ : String, length~ : Int, maximum~ : Int)
+  InvalidOffset(context~ : String, offset~ : Int32)
+  Truncated(context~ : String, offset~ : Int32, needed~ : Int32, available~ : Int32)
+  InvalidLength(context~ : String, length~ : UInt32, minimum~ : Int32)
+  LengthTooLarge(context~ : String, length~ : UInt32)
+  LengthExceedsLimit(context~ : String, length~ : Int32, maximum~ : Int32)
   InvalidAttributeType(attribute_type~ : UInt16)
-  UnexpectedFieldLength(context~ : String, length~ : Int, expected~ : Int)
+  UnexpectedFieldLength(context~ : String, length~ : Int32, expected~ : Int32)
   InvalidString(context~ : String)
 } derive(Eq, @debug.Debug)
 pub fn CodecError::equal(Self, Self) -> Bool
@@ -66,10 +66,10 @@ pub fn CodecError::to_repr(Self) -> @debug.Repr
 // Types and methods
 pub(all) struct ExtendedAck {
   message : String?
-  offset : UInt?
+  offset : UInt32?
   cookie : Bytes?
-  missing_type : UInt?
-  missing_nest : UInt?
+  missing_type : UInt32?
+  missing_nest : UInt32?
   unknown_attributes : Array[NetlinkAttribute]
 } derive(Eq, @debug.Debug)
 pub fn ExtendedAck::equal(Self, Self) -> Bool
@@ -88,9 +88,9 @@ pub fn NetlinkAttribute::to_repr(Self) -> @debug.Repr
 
 pub(all) enum NetlinkControl {
   Noop
-  Done(Int?)
+  Done(Int32?)
   Ack(NetlinkHeader)
-  KernelError(Int, NetlinkHeader)
+  KernelError(Int32, NetlinkHeader)
   Overrun
 } derive(Eq, @debug.Debug)
 pub fn NetlinkControl::equal(Self, Self) -> Bool
@@ -98,11 +98,11 @@ pub fn NetlinkControl::not_equal(Self, Self) -> Bool
 pub fn NetlinkControl::to_repr(Self) -> @debug.Repr
 
 pub(all) struct NetlinkHeader {
-  length : UInt
+  length : UInt32
   message_type : UInt16
   flags : UInt16
-  sequence : UInt
-  port_id : UInt
+  sequence : UInt32
+  port_id : UInt32
 } derive(Eq, @debug.Debug)
 pub fn NetlinkHeader::equal(Self, Self) -> Bool
 pub fn NetlinkHeader::not_equal(Self, Self) -> Bool

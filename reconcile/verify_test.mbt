@@ -3,7 +3,7 @@ struct ObservedNetwork {
   mut observation : @state.NetworkSnapshot
   ignore_writes : Bool
   fail_final : Bool
-  mut snapshots : Int
+  mut snapshots : Int32
 }
 
 ///|

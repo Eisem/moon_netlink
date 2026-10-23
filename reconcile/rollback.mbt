@@ -7,7 +7,7 @@ pub(all) enum CompensationStatus {
 
 ///|
 pub struct RollbackResult {
-  index : Int
+  index : Int32
   change : @state.Change?
   status : CompensationStatus
 }
@@ -31,7 +31,7 @@ fn inverse(change : @state.Change) -> @state.Change? {
 async fn rollback_completed(
   backend : &NetworkBackend,
   plan : @state.Plan,
-  completed : Array[Int],
+  completed : Array[Int32],
 ) -> Array[RollbackResult] {
   let result = []
   for index in completed.rev() {

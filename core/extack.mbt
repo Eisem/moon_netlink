@@ -3,10 +3,10 @@
 #warnings("-implicit_impl_as_method")
 pub(all) struct ExtendedAck {
   message : String?
-  offset : UInt?
+  offset : UInt32?
   cookie : Bytes?
-  missing_type : UInt?
-  missing_nest : UInt?
+  missing_type : UInt32?
+  missing_nest : UInt32?
   unknown_attributes : Array[NetlinkAttribute]
 } derive(Debug, Eq)
 
@@ -63,10 +63,10 @@ pub fn decode_extended_ack(
   }
   let attributes = decode_attributes(message.payload, start)
   let mut text : String? = None
-  let mut offset : UInt? = None
+  let mut offset : UInt32? = None
   let mut cookie : Bytes? = None
-  let mut missing_type : UInt? = None
-  let mut missing_nest : UInt? = None
+  let mut missing_type : UInt32? = None
+  let mut missing_nest : UInt32? = None
   let unknown : Array[NetlinkAttribute] = []
   for attribute in attributes {
     match attribute.attribute_type {

@@ -10,23 +10,23 @@ import {
 }
 
 // Values
-pub let route_monitor_groups : UInt
+pub let route_monitor_groups : UInt32
 
 // Errors
 pub(all) suberror TransportError {
   UnsupportedPlatform
-  OpenFailed(errno~ : Int)
-  InvalidReceiveCapacity(size~ : Int, minimum~ : Int)
+  OpenFailed(errno~ : Int32)
+  InvalidReceiveCapacity(size~ : Int32, minimum~ : Int32)
   ReadClosed
-  DatagramMayBeTruncated(capacity~ : Int)
-  ShortWrite(expected~ : Int, actual~ : Int)
-  KernelRejected(errno~ : Int)
-  KernelRejectedDetailed(errno~ : Int, original_header~ : @core.NetlinkHeader?, extack~ : @core.ExtendedAck)
+  DatagramMayBeTruncated(capacity~ : Int32)
+  ShortWrite(expected~ : Int32, actual~ : Int32)
+  KernelRejected(errno~ : Int32)
+  KernelRejectedDetailed(errno~ : Int32, original_header~ : @core.NetlinkHeader?, extack~ : @core.ExtendedAck)
   EventStreamLost
   UnexpectedControl(message_type~ : UInt16)
-  InvalidRequestTimeout(timeout_ms~ : Int)
-  RequestTimedOut(timeout_ms~ : Int)
-  DumpInterrupted(sequence~ : UInt)
+  InvalidRequestTimeout(timeout_ms~ : Int32)
+  RequestTimedOut(timeout_ms~ : Int32)
+  DumpInterrupted(sequence~ : UInt32)
 } derive(Eq, @debug.Debug)
 pub fn TransportError::equal(Self, Self) -> Bool
 pub fn TransportError::not_equal(Self, Self) -> Bool
@@ -36,8 +36,8 @@ pub fn TransportError::to_repr(Self) -> @debug.Repr
 pub struct RouteClient {
   socket : RouteSocket
   requests : @async.Mutex
-  request_timeout_ms : Int
-  mut next_sequence : UInt
+  request_timeout_ms : Int32
+  mut next_sequence : UInt32
 }
 pub async fn RouteClient::add_address(Self, @route.AddressSpec, mode? : @route.AddMode) -> Unit
 pub async fn RouteClient::add_route(Self, @route.RouteSpec, mode? : @route.AddMode) -> Unit
@@ -45,41 +45,41 @@ pub async fn RouteClient::close(Self) -> Unit
 pub async fn RouteClient::delete_address(Self, @route.AddressSpec) -> Unit
 pub async fn RouteClient::delete_route(Self, @route.RouteSpec) -> Unit
 pub async fn RouteClient::get_addresses(Self) -> Array[@route.Address]
-pub async fn RouteClient::get_link_by_index(Self, Int) -> @route.Link
+pub async fn RouteClient::get_link_by_index(Self, Int32) -> @route.Link
 pub async fn RouteClient::get_link_by_name(Self, String) -> @route.Link
 pub async fn RouteClient::get_links(Self) -> Array[@route.Link]
 pub async fn RouteClient::get_neighbors(Self) -> Array[@route.Neighbor]
 pub async fn RouteClient::get_routes(Self) -> Array[@route.Route]
-pub fn RouteClient::mutation_attempts(Self) -> Int
-pub async fn RouteClient::open(receive_capacity? : Int, request_timeout_ms? : Int) -> Self
-pub async fn RouteClient::set_link_down(Self, Int) -> Unit
-pub async fn RouteClient::set_link_mtu(Self, Int, UInt) -> Unit
-pub async fn RouteClient::set_link_up(Self, Int) -> Unit
+pub fn RouteClient::mutation_attempts(Self) -> Int32
+pub async fn RouteClient::open(receive_capacity? : Int32, request_timeout_ms? : Int32) -> Self
+pub async fn RouteClient::set_link_down(Self, Int32) -> Unit
+pub async fn RouteClient::set_link_mtu(Self, Int32, UInt32) -> Unit
+pub async fn RouteClient::set_link_up(Self, Int32) -> Unit
 
 pub struct RouteMonitor {
   socket : RouteSocket
   readers : @async.Mutex
   buffer : FixedArray[Byte]
   pending : Array[@route.RouteEvent]
-  mut next : Int
-  mut read_task : @async.Task[Int]?
+  mut next : Int32
+  mut read_task : @async.Task[Int32]?
 }
 pub fn RouteMonitor::close(Self) -> Unit
 pub async fn RouteMonitor::next_event(Self) -> @route.RouteEvent
-pub async fn RouteMonitor::open(groups? : UInt, receive_capacity? : Int) -> Self
+pub async fn RouteMonitor::open(groups? : UInt32, receive_capacity? : Int32) -> Self
 
 pub struct RouteSocket {
   source : @raw_fd.RawFd
-  receive_capacity : Int
+  receive_capacity : Int32
   mut closed : Bool
-  mut mutation_count : Int
+  mut mutation_count : Int32
 }
 pub fn RouteSocket::close(Self) -> Unit
-pub fn RouteSocket::mutation_attempts(Self) -> Int
-pub async fn RouteSocket::open(groups? : UInt, receive_capacity? : Int) -> Self
-pub async fn RouteSocket::request_ack(Self, Bytes, UInt) -> Unit
-pub async fn RouteSocket::request_dump(Self, Bytes, UInt) -> Array[@core.NetlinkMessage]
-pub async fn RouteSocket::request_single(Self, Bytes, UInt, UInt16) -> @core.NetlinkMessage
+pub fn RouteSocket::mutation_attempts(Self) -> Int32
+pub async fn RouteSocket::open(groups? : UInt32, receive_capacity? : Int32) -> Self
+pub async fn RouteSocket::request_ack(Self, Bytes, UInt32) -> Unit
+pub async fn RouteSocket::request_dump(Self, Bytes, UInt32) -> Array[@core.NetlinkMessage]
+pub async fn RouteSocket::request_single(Self, Bytes, UInt32, UInt16) -> @core.NetlinkMessage
 
 // Type aliases
 

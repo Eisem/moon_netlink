@@ -1,5 +1,5 @@
 ///|
-fn compare_int(left : Int, right : Int) -> Int {
+fn compare_int(left : Int32, right : Int32) -> Int32 {
   if left < right {
     -1
   } else if left > right {
@@ -10,7 +10,7 @@ fn compare_int(left : Int, right : Int) -> Int {
 }
 
 ///|
-fn compare_uint(left : UInt, right : UInt) -> Int {
+fn compare_uint(left : UInt32, right : UInt32) -> Int32 {
   if left < right {
     -1
   } else if left > right {
@@ -21,12 +21,12 @@ fn compare_uint(left : UInt, right : UInt) -> Int {
 }
 
 ///|
-fn compare_byte(left : Byte, right : Byte) -> Int {
+fn compare_byte(left : Byte, right : Byte) -> Int32 {
   compare_int(left.to_int(), right.to_int())
 }
 
 ///|
-fn compare_optional_uint(left : UInt?, right : UInt?) -> Int {
+fn compare_optional_uint(left : UInt32?, right : UInt32?) -> Int32 {
   match (left, right) {
     (None, None) => 0
     (None, Some(_)) => -1
@@ -36,7 +36,7 @@ fn compare_optional_uint(left : UInt?, right : UInt?) -> Int {
 }
 
 ///|
-fn family_key(family : @route.AddressFamily) -> Int {
+fn family_key(family : @route.AddressFamily) -> Int32 {
   match family {
     Ipv4 => 4
     Ipv6 => 6
@@ -77,7 +77,7 @@ fn sort_links(links : Array[@route.Link]) -> Unit {
 }
 
 ///|
-fn compare_string_option(left : String?, right : String?) -> Int {
+fn compare_string_option(left : String?, right : String?) -> Int32 {
   match (left, right) {
     (None, None) => 0
     (None, Some(_)) => -1

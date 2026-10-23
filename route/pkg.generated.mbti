@@ -25,29 +25,29 @@ pub fn decode_route(@core.NetlinkMessage) -> Route raise @core.CodecError
 
 pub fn decode_routes(ArrayView[@core.NetlinkMessage]) -> Array[Route] raise @core.CodecError
 
-pub fn encode_add_address(UInt, AddressSpec, mode? : AddMode) -> Bytes raise
+pub fn encode_add_address(UInt32, AddressSpec, mode? : AddMode) -> Bytes raise
 
-pub fn encode_add_route(UInt, RouteSpec, mode? : AddMode) -> Bytes raise
+pub fn encode_add_route(UInt32, RouteSpec, mode? : AddMode) -> Bytes raise
 
-pub fn encode_delete_address(UInt, AddressSpec) -> Bytes raise
+pub fn encode_delete_address(UInt32, AddressSpec) -> Bytes raise
 
-pub fn encode_delete_route(UInt, RouteSpec) -> Bytes raise
+pub fn encode_delete_route(UInt32, RouteSpec) -> Bytes raise
 
-pub fn encode_get_addresses(UInt) -> Bytes
+pub fn encode_get_addresses(UInt32) -> Bytes
 
-pub fn encode_get_link_by_index(UInt, Int) -> Bytes raise LinkQueryError
+pub fn encode_get_link_by_index(UInt32, Int32) -> Bytes raise LinkQueryError
 
-pub fn encode_get_link_by_name(UInt, String) -> Bytes raise LinkQueryError
+pub fn encode_get_link_by_name(UInt32, String) -> Bytes raise LinkQueryError
 
-pub fn encode_get_links(UInt) -> Bytes
+pub fn encode_get_links(UInt32) -> Bytes
 
-pub fn encode_get_neighbors(UInt) -> Bytes
+pub fn encode_get_neighbors(UInt32) -> Bytes
 
-pub fn encode_get_routes(UInt) -> Bytes
+pub fn encode_get_routes(UInt32) -> Bytes
 
-pub fn encode_set_link_mtu(UInt, Int, UInt) -> Bytes raise
+pub fn encode_set_link_mtu(UInt32, Int32, UInt32) -> Bytes raise
 
-pub fn encode_set_link_state(UInt, Int, Bool) -> Bytes raise LinkQueryError
+pub fn encode_set_link_state(UInt32, Int32, Bool) -> Bytes raise LinkQueryError
 
 pub let rtm_getaddr : UInt16
 
@@ -76,23 +76,23 @@ pub fn AddressParseError::not_equal(Self, Self) -> Bool
 pub fn AddressParseError::to_repr(Self) -> @debug.Repr
 
 pub(all) suberror LinkQueryError {
-  InvalidInterfaceIndex(index~ : Int)
+  InvalidInterfaceIndex(index~ : Int32)
   EmptyInterfaceName
   InterfaceNameContainsNul
   InterfaceNameInvalidUtf16
-  InterfaceNameTooLong(encoded_length~ : Int, maximum~ : Int)
+  InterfaceNameTooLong(encoded_length~ : Int32, maximum~ : Int32)
 } derive(Eq, @debug.Debug)
 pub fn LinkQueryError::equal(Self, Self) -> Bool
 pub fn LinkQueryError::not_equal(Self, Self) -> Bool
 pub fn LinkQueryError::to_repr(Self) -> @debug.Repr
 
 pub(all) suberror MutationError {
-  InvalidInterfaceIndex(index~ : Int)
-  InvalidMtu(mtu~ : UInt)
-  InvalidPrefix(prefix_length~ : Byte, maximum~ : Int)
+  InvalidInterfaceIndex(index~ : Int32)
+  InvalidMtu(mtu~ : UInt32)
+  InvalidPrefix(prefix_length~ : Byte, maximum~ : Int32)
   NonCanonicalDestination
   GatewayFamilyMismatch
-  InvalidTable(table~ : UInt)
+  InvalidTable(table~ : UInt32)
 } derive(Eq, @debug.Debug)
 pub fn MutationError::equal(Self, Self) -> Bool
 pub fn MutationError::not_equal(Self, Self) -> Bool
@@ -109,14 +109,14 @@ pub fn AddMode::to_repr(Self) -> @debug.Repr
 
 pub(all) struct Address {
   family : AddressFamily
-  interface_index : UInt
+  interface_index : UInt32
   interface_name : String?
   prefix_length : Byte
   scope : Byte
   local_address : IpAddress?
   address : IpAddress?
   label : String?
-  flags : UInt
+  flags : UInt32
   unknown_attributes : Array[@core.NetlinkAttribute]
 } derive(Eq, @debug.Debug)
 pub fn Address::equal(Self, Self) -> Bool
@@ -133,7 +133,7 @@ pub fn AddressFamily::not_equal(Self, Self) -> Bool
 pub fn AddressFamily::to_repr(Self) -> @debug.Repr
 
 pub(all) struct AddressSpec {
-  interface_index : Int
+  interface_index : Int32
   address : IpAddress
   prefix_length : Byte
   scope : Byte
@@ -172,14 +172,14 @@ pub fn Ipv6Address::to_repr(Self) -> @debug.Repr
 pub fn Ipv6Address::to_string(Self) -> String
 
 pub(all) struct Link {
-  index : Int
+  index : Int32
   name : String?
   kind : String?
-  mtu : UInt?
+  mtu : UInt32?
   mac : MacAddress?
-  flags : UInt
+  flags : UInt32
   operational_state : LinkOperationalState?
-  master_index : Int?
+  master_index : Int32?
   unknown_attributes : Array[@core.NetlinkAttribute]
 } derive(Eq, @debug.Debug)
 pub fn Link::equal(Self, Self) -> Bool
@@ -212,14 +212,14 @@ pub fn MacAddress::to_string(Self) -> String
 
 pub(all) struct Neighbor {
   family : AddressFamily
-  interface_index : Int
+  interface_index : Int32
   interface_name : String?
   destination : IpAddress?
   link_layer_address : MacAddress?
   state : NeighborState
   flags : Byte
   neighbor_type : Byte
-  probes : UInt?
+  probes : UInt32?
   unknown_attributes : Array[@core.NetlinkAttribute]
 } derive(Eq, @debug.Debug)
 pub fn Neighbor::equal(Self, Self) -> Bool
@@ -250,15 +250,15 @@ pub(all) struct Route {
   source_prefix_length : Byte
   gateway : IpAddress?
   preferred_source : IpAddress?
-  input_interface : UInt?
-  output_interface : UInt?
-  table : UInt
-  priority : UInt?
+  input_interface : UInt32?
+  output_interface : UInt32?
+  table : UInt32
+  priority : UInt32?
   protocol : Byte
   scope : Byte
   route_type : Byte
   tos : Byte
-  flags : UInt
+  flags : UInt32
   unknown_attributes : Array[@core.NetlinkAttribute]
 } derive(Eq, @debug.Debug)
 pub fn Route::equal(Self, Self) -> Bool
@@ -284,9 +284,9 @@ pub(all) struct RouteSpec {
   destination : IpAddress
   prefix_length : Byte
   gateway : IpAddress?
-  output_interface : Int
-  table : UInt
-  priority : UInt?
+  output_interface : Int32
+  table : UInt32
+  priority : UInt32?
   protocol : Byte
   scope : Byte
 } derive(Eq, @debug.Debug)

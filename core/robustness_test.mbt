@@ -1,10 +1,10 @@
 ///|
 struct RobustRng {
-  mut value : UInt
+  mut value : UInt32
 }
 
 ///|
-fn RobustRng::next(self : RobustRng) -> UInt {
+fn RobustRng::next(self : RobustRng) -> UInt32 {
   let mut value = self.value
   value = value ^ (value << 13)
   value = value ^ (value >> 17)
@@ -14,12 +14,12 @@ fn RobustRng::next(self : RobustRng) -> UInt {
 }
 
 ///|
-fn RobustRng::bounded(self : RobustRng, limit : Int) -> Int {
+fn RobustRng::bounded(self : RobustRng, limit : Int32) -> Int32 {
   (self.next() % limit.reinterpret_as_uint()).reinterpret_as_int()
 }
 
 ///|
-fn RobustRng::payload(self : RobustRng, length : Int) -> Bytes {
+fn RobustRng::payload(self : RobustRng, length : Int32) -> Bytes {
   Bytes::from_array(FixedArray::makei(length, _ => self.next().to_byte())[:])
 }
 
@@ -79,7 +79,7 @@ test "robustness: seed 0x4d4e4c31 preserves 512 shuffled unknown and nested attr
 }
 
 ///|
-fn reject_robust_message(data : BytesView, iteration : Int) -> Unit raise {
+fn reject_robust_message(data : BytesView, iteration : Int32) -> Unit raise {
   try @core.decode_datagram(data) catch {
     Truncated(..) | InvalidLength(..) | LengthTooLarge(..) => ()
     error => fail("seed=0x4d4e4c32 iteration=\{iteration}: \{Repr(error)}")

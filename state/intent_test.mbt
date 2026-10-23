@@ -1,5 +1,5 @@
 ///|
-fn test_link(index : Int, name : String) -> @route.Link {
+fn test_link(index : Int32, name : String) -> @route.Link {
   {
     index,
     name: Some(name),
@@ -14,7 +14,7 @@ fn test_link(index : Int, name : String) -> @route.Link {
 }
 
 ///|
-fn test_address(index : UInt, ip : String) -> @route.Address raise {
+fn test_address(index : UInt32, ip : String) -> @route.Address raise {
   {
     family: Ipv6,
     interface_index: index,
@@ -30,7 +30,7 @@ fn test_address(index : UInt, ip : String) -> @route.Address raise {
 }
 
 ///|
-fn test_route(index : UInt) -> @route.Route {
+fn test_route(index : UInt32) -> @route.Route {
   {
     family: Ipv6,
     destination: None,

@@ -3,9 +3,9 @@
 #warnings("-implicit_impl_as_method")
 pub(all) enum NetlinkControl {
   Noop
-  Done(Int?)
+  Done(Int32?)
   Ack(NetlinkHeader)
-  KernelError(Int, NetlinkHeader)
+  KernelError(Int32, NetlinkHeader)
   Overrun
 } derive(Debug, Eq)
 

@@ -16,7 +16,7 @@ fn control_message(
 }
 
 ///|
-fn nlmsgerr_payload(errno : Int) -> Bytes {
+fn nlmsgerr_payload(errno : Int32) -> Bytes {
   let buffer = FixedArray::make(20, b'\x00')
   @core.write_u32_le(buffer, 0, errno.reinterpret_as_uint())
   @core.write_u32_le(buffer, 4, 32)

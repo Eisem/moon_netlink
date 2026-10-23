@@ -87,14 +87,14 @@ pub extend AddressFamily with Eq::{equal, not_equal}
 #warnings("-implicit_impl_as_method")
 pub(all) struct Address {
   family : AddressFamily
-  interface_index : UInt
+  interface_index : UInt32
   interface_name : String?
   prefix_length : Byte
   scope : Byte
   local_address : IpAddress?
   address : IpAddress?
   label : String?
-  flags : UInt
+  flags : UInt32
   unknown_attributes : Array[@core.NetlinkAttribute]
 } derive(Debug, Eq)
 
@@ -106,7 +106,7 @@ pub extend Address with Eq::{equal, not_equal}
 
 ///|
 /// Build an RTM_GETADDR dump request for all address families.
-pub fn encode_get_addresses(sequence : UInt) -> Bytes {
+pub fn encode_get_addresses(sequence : UInt32) -> Bytes {
   let message_length = 24
   let buffer = FixedArray::make(message_length, b'\x00')
   @core.write_u32_le(buffer, 0, message_length.reinterpret_as_uint())

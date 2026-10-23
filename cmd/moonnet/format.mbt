@@ -71,7 +71,7 @@ fn json_string_option(value : String?) -> Json {
 }
 
 ///|
-fn json_uint_option(value : UInt?) -> Json {
+fn json_uint_option(value : UInt32?) -> Json {
   match value {
     Some(value) => @json.to_json(value)
     None => Json::null()
@@ -79,7 +79,7 @@ fn json_uint_option(value : UInt?) -> Json {
 }
 
 ///|
-fn json_int_option(value : Int?) -> Json {
+fn json_int_option(value : Int32?) -> Json {
   match value {
     Some(value) => @json.to_json(value)
     None => Json::null()

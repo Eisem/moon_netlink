@@ -1,7 +1,7 @@
 ///|
 /// Legacy RTNetlink multicast group mask for Link, IPv4/IPv6 Address/Route,
 /// and Neighbor changes (RTMGRP_LINK/NEIGH/IPV4_IFADDR/IPV4_ROUTE/IPv6 variants).
-pub let route_monitor_groups : UInt = 0x0555
+pub let route_monitor_groups : UInt32 = 0x0555
 
 ///|
 /// An independent multicast socket. No client request uses this descriptor.
@@ -10,16 +10,16 @@ pub struct RouteMonitor {
   readers : @async.Mutex
   buffer : FixedArray[Byte]
   pending : Array[@route.RouteEvent]
-  mut next : Int
-  mut read_task : @async.Task[Int]?
+  mut next : Int32
+  mut read_task : @async.Task[Int32]?
 }
 
 ///|
 /// Subscribe before producing changes. Errors indicating data loss require a
 /// new query/snapshot; this stream does not silently hide dropped events.
 pub async fn RouteMonitor::open(
-  groups? : UInt = route_monitor_groups,
-  receive_capacity? : Int = default_receive_capacity,
+  groups~ : UInt32 = route_monitor_groups,
+  receive_capacity~ : Int32 = default_receive_capacity,
 ) -> RouteMonitor {
   {
     socket: RouteSocket::open(groups~, receive_capacity~),

@@ -11,7 +11,7 @@ pub fn address_identity(DesiredAddress) -> String
 
 pub fn build_plan(NetworkSnapshot, DesiredState) -> Plan raise
 
-pub fn desired_priority(DesiredRoute) -> UInt
+pub fn desired_priority(DesiredRoute) -> UInt32
 
 pub fn diff(NetworkSnapshot, DesiredState) -> Diff raise
 
@@ -23,7 +23,7 @@ pub fn route_destination(@route.Route) -> String?
 
 pub fn route_identity(DesiredRoute) -> String
 
-pub fn route_priority(@route.Route) -> UInt
+pub fn route_priority(@route.Route) -> UInt32
 
 pub fn validate_desired(DesiredState) -> Unit raise
 
@@ -31,8 +31,8 @@ pub fn validate_plan(Plan, NetworkSnapshot, dangerous? : Bool) -> Unit raise
 
 // Errors
 pub(all) suberror SafetyError {
-  ProtectedResource(step~ : Int, interface~ : String, reason~ : String)
-  StaleInterface(interface~ : String, planned_index~ : Int, observed_index~ : Int?)
+  ProtectedResource(step~ : Int32, interface~ : String, reason~ : String)
+  StaleInterface(interface~ : String, planned_index~ : Int32, observed_index~ : Int32?)
 } derive(Eq, @debug.Debug)
 pub fn SafetyError::equal(Self, Self) -> Bool
 pub fn SafetyError::not_equal(Self, Self) -> Bool
@@ -51,15 +51,15 @@ pub fn StateError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
 pub(all) enum Change {
-  SetLinkUp(name~ : String, index~ : Int, before~ : Bool, after~ : Bool)
-  SetMtu(name~ : String, index~ : Int, before~ : UInt?, after~ : UInt)
+  SetLinkUp(name~ : String, index~ : Int32, before~ : Bool, after~ : Bool)
+  SetMtu(name~ : String, index~ : Int32, before~ : UInt32?, after~ : UInt32)
   AddAddress(name~ : String, spec~ : @route.AddressSpec)
   DeleteAddress(name~ : String, spec~ : @route.AddressSpec)
   AddRoute(name~ : String, spec~ : @route.RouteSpec)
   DeleteRoute(name~ : String, spec~ : @route.RouteSpec)
 } derive(Eq, @debug.Debug)
 pub fn Change::equal(Self, Self) -> Bool
-pub fn Change::interface_index(Self) -> Int
+pub fn Change::interface_index(Self) -> Int32
 pub fn Change::interface_name(Self) -> String
 pub fn Change::not_equal(Self, Self) -> Bool
 pub fn Change::to_json(Self) -> Json
@@ -80,7 +80,7 @@ pub(all) struct DesiredLink {
   name : String
   ensure : Ensure
   up : Bool?
-  mtu : UInt?
+  mtu : UInt32?
 } derive(Eq, @debug.Debug)
 pub fn DesiredLink::equal(Self, Self) -> Bool
 pub fn DesiredLink::not_equal(Self, Self) -> Bool
@@ -92,8 +92,8 @@ pub(all) struct DesiredRoute {
   destination : @route.IpAddress
   prefix_length : Byte
   gateway : @route.IpAddress?
-  table : UInt
-  priority : UInt
+  table : UInt32
+  priority : UInt32
   protocol : Byte
   scope : Byte
 } derive(Eq, @debug.Debug)
@@ -129,7 +129,7 @@ pub fn Ensure::to_repr(Self) -> @debug.Repr
 
 pub(all) struct IntentStatus {
   intent : ResourceIntent
-  interface_index : Int?
+  interface_index : Int32?
   exists : Bool
   satisfied : Bool
 } derive(Eq, @debug.Debug)
@@ -144,7 +144,7 @@ pub struct NetworkSnapshot {
   neighbors : Array[@route.Neighbor]
 } derive(Eq, @debug.Debug)
 pub fn NetworkSnapshot::equal(Self, Self) -> Bool
-pub fn NetworkSnapshot::interface_name(Self, Int) -> String?
+pub fn NetworkSnapshot::interface_name(Self, Int32) -> String?
 pub fn NetworkSnapshot::link_by_name(Self, String) -> @route.Link?
 pub fn NetworkSnapshot::new(links~ : ArrayView[@route.Link], addresses~ : ArrayView[@route.Address], routes~ : ArrayView[@route.Route], neighbors~ : ArrayView[@route.Neighbor]) -> Self
 pub fn NetworkSnapshot::not_equal(Self, Self) -> Bool

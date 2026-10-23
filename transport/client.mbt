@@ -15,15 +15,15 @@ async fn[X] with_mutex(mutex : @async.Mutex, operation : async () -> X) -> X {
 pub struct RouteClient {
   socket : RouteSocket
   requests : @async.Mutex
-  request_timeout_ms : Int
-  mut next_sequence : UInt
+  request_timeout_ms : Int32
+  mut next_sequence : UInt32
 }
 
 ///|
 /// Open a typed route client with no multicast subscriptions.
 pub async fn RouteClient::open(
-  receive_capacity? : Int = default_receive_capacity,
-  request_timeout_ms? : Int = 5000,
+  receive_capacity~ : Int32 = default_receive_capacity,
+  request_timeout_ms~ : Int32 = 5000,
 ) -> RouteClient {
   validate_request_timeout(request_timeout_ms)
   {
@@ -35,14 +35,14 @@ pub async fn RouteClient::open(
 }
 
 ///|
-fn RouteClient::take_sequence(self : RouteClient) -> UInt {
+fn RouteClient::take_sequence(self : RouteClient) -> UInt32 {
   let sequence = self.next_sequence
   self.next_sequence = advance_sequence(sequence)
   sequence
 }
 
 ///|
-fn advance_sequence(sequence : UInt) -> UInt {
+fn advance_sequence(sequence : UInt32) -> UInt32 {
   if sequence == 0xffffffff {
     1
   } else {
@@ -53,7 +53,7 @@ fn advance_sequence(sequence : UInt) -> UInt {
 ///|
 async fn RouteClient::request_dump_locked(
   self : RouteClient,
-  build_request : (UInt) -> Bytes,
+  build_request : (UInt32) -> Bytes,
 ) -> Array[@core.NetlinkMessage] {
   let sequence = self.take_sequence()
   @async.with_timeout(
@@ -66,7 +66,7 @@ async fn RouteClient::request_dump_locked(
 ///|
 async fn RouteClient::request_ack_locked(
   self : RouteClient,
-  build_request : (UInt) -> Bytes raise?,
+  build_request : (UInt32) -> Bytes raise?,
 ) -> Unit {
   let sequence = self.take_sequence()
   @async.with_timeout(
@@ -77,7 +77,7 @@ async fn RouteClient::request_ack_locked(
 }
 
 ///|
-fn find_link_name(links : ArrayView[@route.Link], index : Int) -> String? {
+fn find_link_name(links : ArrayView[@route.Link], index : Int32) -> String? {
   for link in links {
     if link.index == index {
       return link.name
@@ -149,7 +149,7 @@ pub async fn RouteClient::get_links(self : RouteClient) -> Array[@route.Link] {
 /// timeout. A missing interface propagates the kernel errno.
 pub async fn RouteClient::get_link_by_index(
   self : RouteClient,
-  index : Int,
+  index : Int32,
 ) -> @route.Link {
   with_mutex(self.requests, () => {
     let sequence = self.take_sequence()
@@ -184,7 +184,10 @@ pub async fn RouteClient::get_link_by_name(
 
 ///|
 /// Set one link administratively UP and wait for the kernel ACK.
-pub async fn RouteClient::set_link_up(self : RouteClient, index : Int) -> Unit {
+pub async fn RouteClient::set_link_up(
+  self : RouteClient,
+  index : Int32,
+) -> Unit {
   with_mutex(self.requests, () => {
     self.request_ack_locked(fn(sequence) raise {
       @route.encode_set_link_state(sequence, index, true)
@@ -196,7 +199,7 @@ pub async fn RouteClient::set_link_up(self : RouteClient, index : Int) -> Unit {
 /// Set one link administratively DOWN and wait for the kernel ACK.
 pub async fn RouteClient::set_link_down(
   self : RouteClient,
-  index : Int,
+  index : Int32,
 ) -> Unit {
   with_mutex(self.requests, () => {
     self.request_ack_locked(fn(sequence) raise {
@@ -254,6 +257,6 @@ pub async fn RouteClient::close(self : RouteClient) -> Unit {
 ///|
 /// Cumulative mutation send attempts on this client's socket, including recovery.
 /// Use a dedicated client when measuring one application's writes.
-pub fn RouteClient::mutation_attempts(self : RouteClient) -> Int {
+pub fn RouteClient::mutation_attempts(self : RouteClient) -> Int32 {
   self.socket.mutation_attempts()
 }

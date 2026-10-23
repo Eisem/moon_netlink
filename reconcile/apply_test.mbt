@@ -2,9 +2,9 @@
 struct FakeNetwork {
   observation : @state.NetworkSnapshot
   calls : Array[@state.Change]
-  fail_at : Int?
+  fail_at : Int32?
   failure : Error
-  delay_ms : Int
+  delay_ms : Int32
   edit_plan : @state.Plan?
 }
 
@@ -28,7 +28,7 @@ impl @reconcile.NetworkBackend for FakeNetwork with fn execute(self, change) {
 }
 
 ///|
-fn network_fixture(fail_at : Int?) -> (FakeNetwork, @state.Plan) raise {
+fn network_fixture(fail_at : Int32?) -> (FakeNetwork, @state.Plan) raise {
   let link : @route.Link = {
     index: 7,
     name: Some("veth0"),

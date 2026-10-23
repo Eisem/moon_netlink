@@ -49,7 +49,7 @@ pub fn NetworkSnapshot::new(
 /// Indices are observation references; names identify desired links.
 pub fn NetworkSnapshot::interface_name(
   self : NetworkSnapshot,
-  index : Int,
+  index : Int32,
 ) -> String? {
   for link in self.links {
     if link.index == index {

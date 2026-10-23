@@ -330,7 +330,7 @@ fn emit(
 }
 
 ///|
-async fn run(options : Options, writes : Ref[Int]) -> Unit {
+async fn run(options : Options, writes : Ref[Int32]) -> Unit {
   let desired = read_desired(options.path)
   @async.with_task_group(group => {
     let client = @transport.RouteClient::open()

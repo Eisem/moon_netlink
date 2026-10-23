@@ -64,7 +64,7 @@ fn event_json(event : @route.RouteEvent) -> Json {
 
 ///|
 async fn watch_events(options : WatchOptions) -> Unit {
-  let groups : UInt = match options.filter {
+  let groups : UInt32 = match options.filter {
     "link" => 0x0001
     "address" => 0x0110
     "route" => 0x0440

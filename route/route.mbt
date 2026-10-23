@@ -40,15 +40,15 @@ pub(all) struct Route {
   source_prefix_length : Byte
   gateway : IpAddress?
   preferred_source : IpAddress?
-  input_interface : UInt?
-  output_interface : UInt?
-  table : UInt
-  priority : UInt?
+  input_interface : UInt32?
+  output_interface : UInt32?
+  table : UInt32
+  priority : UInt32?
   protocol : Byte
   scope : Byte
   route_type : Byte
   tos : Byte
-  flags : UInt
+  flags : UInt32
   unknown_attributes : Array[@core.NetlinkAttribute]
 } derive(Debug, Eq)
 
@@ -60,7 +60,7 @@ pub extend Route with Eq::{equal, not_equal}
 
 ///|
 /// Build an RTM_GETROUTE dump request for all address families and tables.
-pub fn encode_get_routes(sequence : UInt) -> Bytes {
+pub fn encode_get_routes(sequence : UInt32) -> Bytes {
   let message_length = 28
   let buffer = FixedArray::make(message_length, b'\x00')
   @core.write_u32_le(buffer, 0, message_length.reinterpret_as_uint())
@@ -89,7 +89,7 @@ fn decode_route_ip(
 fn decode_route_u32(
   attribute : @core.NetlinkAttribute,
   context : String,
-) -> UInt raise @core.CodecError {
+) -> UInt32 raise @core.CodecError {
   require_attribute_length(attribute, 4, context)
   @core.read_u32_le(attribute.payload, 0)
 }
@@ -113,10 +113,10 @@ pub fn decode_route(
   let mut source : IpAddress? = None
   let mut gateway : IpAddress? = None
   let mut preferred_source : IpAddress? = None
-  let mut input_interface : UInt? = None
-  let mut output_interface : UInt? = None
+  let mut input_interface : UInt32? = None
+  let mut output_interface : UInt32? = None
   let mut table = payload[4].to_uint()
-  let mut priority : UInt? = None
+  let mut priority : UInt32? = None
   let unknown : Array[@core.NetlinkAttribute] = []
   for attribute in attributes {
     if attribute.attribute_type == rta_destination {

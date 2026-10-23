@@ -1,6 +1,6 @@
 ///|
 pub struct StepFailure {
-  index : Int
+  index : Int32
   error : Error
   outcome_unknown : Bool
 }
@@ -9,17 +9,17 @@ pub struct StepFailure {
 /// Completed means acknowledged; it does not yet prove final desired state.
 pub struct ApplyReport {
   plan : @state.Plan
-  completed : Array[Int]
+  completed : Array[Int32]
   failed : StepFailure?
-  not_executed : Array[Int]
+  not_executed : Array[Int32]
   dry_run : Bool
   cancelled : Bool
   rollback : Array[RollbackResult]
   verification : VerificationResult?
   /// Measured sends during forward execution; None when instrumentation is absent.
-  attempted_writes : Int?
+  attempted_writes : Int32?
   /// Measured sends during compensation, not the number of rollback records.
-  compensations : Int?
+  compensations : Int32?
 }
 
 ///|

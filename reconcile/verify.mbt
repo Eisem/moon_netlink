@@ -32,8 +32,8 @@ pub fn VerificationResult::to_json(self : VerificationResult) -> Json {
 pub async fn reconcile(
   backend : &NetworkBackend,
   desired : @state.DesiredState,
-  dry_run? : Bool = true,
-  dangerous? : Bool = false,
+  dry_run~ : Bool = true,
+  dangerous~ : Bool = false,
 ) -> ApplyReport {
   let desired = desired.copy()
   let plan = @state.build_plan(backend.snapshot(), desired)

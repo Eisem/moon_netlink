@@ -1,6 +1,6 @@
 ///|
 test "robustness: seed 0x4d4e4c33 preserves 256 reordered typed Link attributes and rejects malformed nesting" {
-  let mut seed : UInt = 0x4d4e4c33
+  let mut seed : UInt32 = 0x4d4e4c33
   for iteration in 0..<256 {
     seed = seed ^ (seed << 13)
     seed = seed ^ (seed >> 17)

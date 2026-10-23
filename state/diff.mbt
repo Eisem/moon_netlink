@@ -1,8 +1,8 @@
 ///|
 /// Supported mutations with observation values needed for review/compensation.
 pub(all) enum Change {
-  SetLinkUp(name~ : String, index~ : Int, before~ : Bool, after~ : Bool)
-  SetMtu(name~ : String, index~ : Int, before~ : UInt?, after~ : UInt)
+  SetLinkUp(name~ : String, index~ : Int32, before~ : Bool, after~ : Bool)
+  SetMtu(name~ : String, index~ : Int32, before~ : UInt32?, after~ : UInt32)
   AddAddress(name~ : String, spec~ : @route.AddressSpec)
   DeleteAddress(name~ : String, spec~ : @route.AddressSpec)
   AddRoute(name~ : String, spec~ : @route.RouteSpec)

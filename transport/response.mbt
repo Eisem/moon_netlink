@@ -8,13 +8,13 @@ let nlm_f_dump_intr : UInt16 = 0x0010
 // Keep interruption state across datagrams and drain through DONE before
 // reporting failure, so the socket can accept the next serialized request.
 priv struct DumpResponse {
-  sequence : UInt
+  sequence : UInt32
   messages : Array[@core.NetlinkMessage]
   mut interrupted : Bool
 }
 
 ///|
-fn DumpResponse::new(sequence : UInt) -> DumpResponse {
+fn DumpResponse::new(sequence : UInt32) -> DumpResponse {
   { sequence, messages: [], interrupted: false, }
 }
 
@@ -58,7 +58,7 @@ fn DumpResponse::consume(
 ///|
 fn decode_single_reply(
   messages : ArrayView[@core.NetlinkMessage],
-  sequence : UInt,
+  sequence : UInt32,
   response_type : UInt16,
 ) -> @core.NetlinkMessage? raise {
   let mut reply : @core.NetlinkMessage? = None

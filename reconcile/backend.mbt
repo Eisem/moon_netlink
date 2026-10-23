@@ -5,7 +5,7 @@ pub(open) trait NetworkBackend {
   async fn snapshot(Self) -> @state.NetworkSnapshot
   async fn execute(Self, @state.Change) -> Unit
   /// Cumulative mutation sends from a dedicated backend; queries are excluded.
-  fn mutation_attempts(Self) -> Int? = _
+  fn mutation_attempts(Self) -> Int32? = _
 }
 
 ///|

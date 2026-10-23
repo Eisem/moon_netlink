@@ -52,9 +52,9 @@ test "kernel rejection retains errno original header and extack diagnostics" {
 ///|
 fn response_message(
   message_type : UInt16,
-  sequence? : UInt = 7,
-  flags? : UInt16 = 0,
-  payload? : Bytes = b"",
+  sequence~ : UInt32 = 7,
+  flags~ : UInt16 = 0,
+  payload~ : Bytes = b"",
 ) -> @core.NetlinkMessage {
   {
     header: {

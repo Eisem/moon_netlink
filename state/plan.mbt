@@ -30,7 +30,7 @@ pub fn Plan::copy(self : Plan) -> Plan {
 }
 
 ///|
-fn change_rank(change : Change) -> Int {
+fn change_rank(change : Change) -> Int32 {
   match change {
     DeleteRoute(..) => 0
     DeleteAddress(..) => 1

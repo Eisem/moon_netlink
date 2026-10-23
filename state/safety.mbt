@@ -1,10 +1,10 @@
 ///|
 pub(all) suberror SafetyError {
-  ProtectedResource(step~ : Int, interface~ : String, reason~ : String)
+  ProtectedResource(step~ : Int32, interface~ : String, reason~ : String)
   StaleInterface(
     interface~ : String,
-    planned_index~ : Int,
-    observed_index~ : Int?
+    planned_index~ : Int32,
+    observed_index~ : Int32?
   )
 } derive(Debug, Eq)
 
@@ -15,7 +15,7 @@ pub extend SafetyError with Debug::{to_repr}
 pub extend SafetyError with Eq::{equal, not_equal}
 
 ///|
-pub fn Change::interface_index(self : Change) -> Int {
+pub fn Change::interface_index(self : Change) -> Int32 {
   match self {
     SetLinkUp(index~, ..) | SetMtu(index~, ..) => index
     AddAddress(spec~, ..) | DeleteAddress(spec~, ..) => spec.interface_index
@@ -31,7 +31,7 @@ pub fn Change::interface_index(self : Change) -> Int {
 pub fn validate_plan(
   plan : Plan,
   snapshot : NetworkSnapshot,
-  dangerous? : Bool = false,
+  dangerous~ : Bool = false,
 ) -> Unit raise {
   for position, step in plan.steps {
     let name = step.change.interface_name()

@@ -2,8 +2,8 @@
 /// Set MTU on an existing link and wait for its kernel ACK.
 pub async fn RouteClient::set_link_mtu(
   self : RouteClient,
-  index : Int,
-  mtu : UInt,
+  index : Int32,
+  mtu : UInt32,
 ) -> Unit {
   with_mutex(self.requests, () => {
     self.request_ack_locked(fn(sequence) raise {
@@ -17,7 +17,7 @@ pub async fn RouteClient::set_link_mtu(
 pub async fn RouteClient::add_address(
   self : RouteClient,
   spec : @route.AddressSpec,
-  mode? : @route.AddMode = Exclusive,
+  mode~ : @route.AddMode = Exclusive,
 ) -> Unit {
   with_mutex(self.requests, () => {
     self.request_ack_locked(fn(sequence) raise {
@@ -44,7 +44,7 @@ pub async fn RouteClient::delete_address(
 pub async fn RouteClient::add_route(
   self : RouteClient,
   spec : @route.RouteSpec,
-  mode? : @route.AddMode = Exclusive,
+  mode~ : @route.AddMode = Exclusive,
 ) -> Unit {
   with_mutex(self.requests, () => {
     self.request_ack_locked(fn(sequence) raise {

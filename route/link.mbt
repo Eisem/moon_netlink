@@ -14,7 +14,7 @@ let nlm_f_ack : UInt16 = 0x0004
 let nlm_f_dump : UInt16 = 0x0300
 
 ///|
-let iff_up : UInt = 0x0001
+let iff_up : UInt32 = 0x0001
 
 ///|
 let ifla_ifname : UInt16 = 3
@@ -95,14 +95,14 @@ pub extend LinkOperationalState with Eq::{equal, not_equal}
 /// The first typed RTNetlink model used by the feasibility probe.
 #warnings("-implicit_impl_as_method")
 pub(all) struct Link {
-  index : Int
+  index : Int32
   name : String?
   kind : String?
-  mtu : UInt?
+  mtu : UInt32?
   mac : MacAddress?
-  flags : UInt
+  flags : UInt32
   operational_state : LinkOperationalState?
-  master_index : Int?
+  master_index : Int32?
   unknown_attributes : Array[@core.NetlinkAttribute]
 } derive(Debug, Eq)
 
@@ -114,7 +114,7 @@ pub extend Link with Eq::{equal, not_equal}
 
 ///|
 /// Build an RTM_GETLINK dump request for a caller-provided sequence number.
-pub fn encode_get_links(sequence : UInt) -> Bytes {
+pub fn encode_get_links(sequence : UInt32) -> Bytes {
   encode_get_link_request(sequence, nlm_f_request | nlm_f_dump, 0, b"")
 }
 
@@ -125,8 +125,8 @@ pub fn encode_get_links(sequence : UInt) -> Bytes {
 /// requests the administratively-down state. All other interface flags are
 /// left unchanged through `ifi_change`.
 pub fn encode_set_link_state(
-  sequence : UInt,
-  index : Int,
+  sequence : UInt32,
+  index : Int32,
   up : Bool,
 ) -> Bytes raise LinkQueryError {
   if index <= 0 {
@@ -148,9 +148,9 @@ pub fn encode_set_link_state(
 
 ///|
 fn encode_get_link_request(
-  sequence : UInt,
+  sequence : UInt32,
   flags : UInt16,
-  index : Int,
+  index : Int32,
   attributes : Bytes,
 ) -> Bytes {
   let message_length = 32 + attributes.length()
@@ -171,8 +171,8 @@ fn encode_get_link_request(
 ///|
 /// Build an RTM_GETLINK point query for a positive interface index.
 pub fn encode_get_link_by_index(
-  sequence : UInt,
-  index : Int,
+  sequence : UInt32,
+  index : Int32,
 ) -> Bytes raise LinkQueryError {
   if index <= 0 {
     raise InvalidInterfaceIndex(index~)
@@ -209,7 +209,7 @@ fn is_well_formed_utf16(value : String) -> Bool {
 /// Linux `IFNAMSIZ` is 16 bytes including the terminating NUL, so the encoded
 /// name may contain at most 15 UTF-8 bytes.
 pub fn encode_get_link_by_name(
-  sequence : UInt,
+  sequence : UInt32,
   name : String,
 ) -> Bytes raise LinkQueryError {
   if name.length() == 0 {
@@ -261,7 +261,7 @@ fn decode_nul_string(
 ///|
 fn require_attribute_length(
   attribute : @core.NetlinkAttribute,
-  expected : Int,
+  expected : Int32,
   context : String,
 ) -> Unit raise @core.CodecError {
   if attribute.payload.length() != expected {
@@ -329,10 +329,10 @@ pub fn decode_link(
   let hardware_type = @core.read_u16_le(payload, 2)
   let mut name : String? = None
   let mut kind : String? = None
-  let mut mtu : UInt? = None
+  let mut mtu : UInt32? = None
   let mut mac : MacAddress? = None
   let mut operational_state : LinkOperationalState? = None
-  let mut master_index : Int? = None
+  let mut master_index : Int32? = None
   let unknown : Array[@core.NetlinkAttribute] = []
   for attribute in attributes {
     if attribute.attribute_type == ifla_ifname {

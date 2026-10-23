@@ -1,5 +1,5 @@
 ///|
-fn hex_value(value : Int) -> Int? {
+fn hex_value(value : Int32) -> Int32? {
   if value >= 48 && value <= 57 {
     Some(value - 48)
   } else if value >= 65 && value <= 70 {
@@ -12,7 +12,7 @@ fn hex_value(value : Int) -> Int? {
 }
 
 ///|
-fn parse_decimal_byte(token : StringView) -> Int? {
+fn parse_decimal_byte(token : StringView) -> Int32? {
   if token.length() == 0 || (token.length() > 1 && token[0].to_int() == 48) {
     return None
   }
@@ -31,12 +31,12 @@ fn parse_decimal_byte(token : StringView) -> Int? {
 }
 
 ///|
-fn parse_ipv4_values(input : String) -> Array[Int]? {
+fn parse_ipv4_values(input : String) -> Array[Int32]? {
   let tokens = input.split(".").to_array()
   if tokens.length() != 4 {
     return None
   }
-  let values : Array[Int] = []
+  let values : Array[Int32] = []
   for token in tokens {
     guard parse_decimal_byte(token) is Some(value) else { return None }
     values.push(value)
@@ -61,7 +61,7 @@ pub fn Ipv4Address::parse(
 }
 
 ///|
-fn parse_hex_group(token : StringView) -> Int? {
+fn parse_hex_group(token : StringView) -> Int32? {
   if token.length() == 0 || token.length() > 4 {
     return None
   }
@@ -74,8 +74,8 @@ fn parse_hex_group(token : StringView) -> Int? {
 }
 
 ///|
-fn parse_ipv6_side(side : StringView, allow_ipv4_tail : Bool) -> Array[Int]? {
-  let groups : Array[Int] = []
+fn parse_ipv6_side(side : StringView, allow_ipv4_tail : Bool) -> Array[Int32]? {
+  let groups : Array[Int32] = []
   if side.length() == 0 {
     return Some(groups)
   }
@@ -128,7 +128,7 @@ pub fn Ipv6Address::parse(
     (compressed.length() == 2 && missing < 1) {
     raise InvalidIpv6(input~)
   }
-  let groups : Array[Int] = []
+  let groups : Array[Int32] = []
   for value in left {
     groups.push(value)
   }
@@ -172,7 +172,7 @@ pub fn Ipv4Address::to_string(self : Ipv4Address) -> String {
 /// Format RFC 5952-style lower-case IPv6, compressing the first longest run
 /// of at least two zero groups.
 pub fn Ipv6Address::to_string(self : Ipv6Address) -> String {
-  let groups : Array[Int] = []
+  let groups : Array[Int32] = []
   for index in 0..<8 {
     groups.push(
       (self.bytes[index * 2].to_int() << 8) | self.bytes[index * 2 + 1].to_int(),

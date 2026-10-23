@@ -6,13 +6,13 @@
 pub async fn apply_plan(
   backend : &NetworkBackend,
   plan : @state.Plan,
-  dry_run? : Bool = true,
-  dangerous? : Bool = false,
+  dry_run~ : Bool = true,
+  dangerous~ : Bool = false,
 ) -> ApplyReport {
   let plan = plan.copy()
   @state.validate_plan(plan, backend.snapshot(), dangerous~)
   let before = backend.mutation_attempts()
-  let completed : Array[Int] = []
+  let completed : Array[Int32] = []
   let mut failed : StepFailure? = None
   let cancelled = if dry_run {
     false
@@ -63,7 +63,7 @@ pub async fn apply_plan(
 }
 
 ///|
-fn mutation_delta(before : Int?, after : Int?) -> Int? {
+fn mutation_delta(before : Int32?, after : Int32?) -> Int32? {
   match (before, after) {
     (Some(before), Some(after)) if after >= before => Some(after - before)
     _ => None

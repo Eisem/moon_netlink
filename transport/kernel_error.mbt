@@ -1,7 +1,7 @@
 ///|
 fn reject_kernel_message(
   message : @core.NetlinkMessage,
-  errno : Int,
+  errno : Int32,
 ) -> Unit raise {
   if @core.decode_extended_ack(message) is Some(extack) {
     let original_header = match @core.decode_control(message) {

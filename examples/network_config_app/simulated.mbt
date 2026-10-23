@@ -38,13 +38,13 @@ fn SimMode::name(self : SimMode) -> String {
 ///|
 /// Number of mutations attempted before the scenario reacts. The third mutation
 /// is the first address addition of the sample configuration.
-let simulated_failure_call : Int = 3
+let simulated_failure_call : Int32 = 3
 
 ///|
 struct SimulatedBackend {
   client : @transport.RouteClient
   mode : SimMode
-  calls : Array[Int]
+  calls : Array[Int32]
 }
 
 ///|

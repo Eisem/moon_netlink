@@ -15,7 +15,7 @@ pub(all) struct DesiredLink {
   name : String
   ensure : Ensure
   up : Bool?
-  mtu : UInt?
+  mtu : UInt32?
 } derive(Debug, Eq)
 
 ///|
@@ -46,8 +46,8 @@ pub(all) struct DesiredRoute {
   destination : @route.IpAddress
   prefix_length : Byte
   gateway : @route.IpAddress?
-  table : UInt
-  priority : UInt
+  table : UInt32
+  priority : UInt32
   protocol : Byte
   scope : Byte
 } derive(Debug, Eq)
@@ -122,7 +122,7 @@ fn field_uint(
   key : String,
   maximum : Double,
   path : String,
-) -> UInt? raise StateError {
+) -> UInt32? raise StateError {
   match fields.get(key) {
     None => None
     Some(Number(value, ..)) if value >= 0 &&
@@ -193,7 +193,7 @@ pub fn route_identity(route : DesiredRoute) -> String {
 }
 
 ///|
-pub fn desired_priority(route : DesiredRoute) -> UInt {
+pub fn desired_priority(route : DesiredRoute) -> UInt32 {
   match route.destination {
     V6(_) if route.priority == 0 => 1024
     _ => route.priority
@@ -403,7 +403,7 @@ pub fn DesiredState::parse(text : String) -> DesiredState raise {
       let metric = field_uint(fields, "priority", 4294967295.0, path).unwrap_or(
         0,
       )
-      let priority : UInt = match destination {
+      let priority : UInt32 = match destination {
         V6(_) if metric == 0 => 1024
         _ => metric
       }

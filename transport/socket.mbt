@@ -2,22 +2,22 @@
 #warnings("-implicit_impl_as_method")
 pub(all) suberror TransportError {
   UnsupportedPlatform
-  OpenFailed(errno~ : Int)
-  InvalidReceiveCapacity(size~ : Int, minimum~ : Int)
+  OpenFailed(errno~ : Int32)
+  InvalidReceiveCapacity(size~ : Int32, minimum~ : Int32)
   ReadClosed
-  DatagramMayBeTruncated(capacity~ : Int)
-  ShortWrite(expected~ : Int, actual~ : Int)
-  KernelRejected(errno~ : Int)
+  DatagramMayBeTruncated(capacity~ : Int32)
+  ShortWrite(expected~ : Int32, actual~ : Int32)
+  KernelRejected(errno~ : Int32)
   KernelRejectedDetailed(
-    errno~ : Int,
+    errno~ : Int32,
     original_header~ : @core.NetlinkHeader?,
     extack~ : @core.ExtendedAck
   )
   EventStreamLost
   UnexpectedControl(message_type~ : UInt16)
-  InvalidRequestTimeout(timeout_ms~ : Int)
-  RequestTimedOut(timeout_ms~ : Int)
-  DumpInterrupted(sequence~ : UInt)
+  InvalidRequestTimeout(timeout_ms~ : Int32)
+  RequestTimedOut(timeout_ms~ : Int32)
+  DumpInterrupted(sequence~ : UInt32)
 } derive(Debug, Eq)
 
 ///|
@@ -30,23 +30,23 @@ pub extend TransportError with Eq::{equal, not_equal}
 /// An independently owned, connected NETLINK_ROUTE socket.
 pub struct RouteSocket {
   source : @raw_fd.RawFd
-  receive_capacity : Int
+  receive_capacity : Int32
   mut closed : Bool
-  mut mutation_count : Int
+  mut mutation_count : Int32
 }
 
 ///|
-let default_receive_capacity : Int = 256 * 1024
+let default_receive_capacity : Int32 = 256 * 1024
 
 ///|
-fn validate_receive_capacity(size : Int) -> Unit raise TransportError {
+fn validate_receive_capacity(size : Int32) -> Unit raise TransportError {
   if size < @core.nlmsg_header_length {
     raise InvalidReceiveCapacity(size~, minimum=@core.nlmsg_header_length)
   }
 }
 
 ///|
-fn validate_request_timeout(timeout_ms : Int) -> Unit raise TransportError {
+fn validate_request_timeout(timeout_ms : Int32) -> Unit raise TransportError {
   if timeout_ms <= 0 {
     raise InvalidRequestTimeout(timeout_ms~)
   }
@@ -54,8 +54,8 @@ fn validate_request_timeout(timeout_ms : Int) -> Unit raise TransportError {
 
 ///|
 fn validate_datagram_read(
-  count : Int,
-  capacity : Int,
+  count : Int32,
+  capacity : Int32,
 ) -> Unit raise TransportError {
   // RawFd exposes read(2), not recvmsg(2) with MSG_TRUNC. For a datagram
   // socket, filling the entire user buffer is therefore ambiguous: it may be
@@ -73,8 +73,8 @@ fn validate_datagram_read(
 /// dump. A read that fills this buffer is rejected because RawFd cannot expose
 /// Linux's MSG_TRUNC flag. The default is 256 KiB.
 pub async fn RouteSocket::open(
-  groups? : UInt = 0,
-  receive_capacity? : Int = default_receive_capacity,
+  groups~ : UInt32 = 0,
+  receive_capacity~ : Int32 = default_receive_capacity,
 ) -> RouteSocket {
   validate_receive_capacity(receive_capacity)
   let native = native_open_route_socket(groups)
@@ -111,7 +111,7 @@ pub fn RouteSocket::close(self : RouteSocket) -> Unit {
 pub async fn RouteSocket::request_dump(
   self : RouteSocket,
   request : Bytes,
-  sequence : UInt,
+  sequence : UInt32,
 ) -> Array[@core.NetlinkMessage] {
   if self.closed {
     raise TransportError::ReadClosed
@@ -143,7 +143,7 @@ pub async fn RouteSocket::request_dump(
 pub async fn RouteSocket::request_single(
   self : RouteSocket,
   request : Bytes,
-  sequence : UInt,
+  sequence : UInt32,
   response_type : UInt16,
 ) -> @core.NetlinkMessage {
   if self.closed {
@@ -175,7 +175,7 @@ pub async fn RouteSocket::request_single(
 pub async fn RouteSocket::request_ack(
   self : RouteSocket,
   request : Bytes,
-  sequence : UInt,
+  sequence : UInt32,
 ) -> Unit {
   if self.closed {
     raise TransportError::ReadClosed
@@ -214,6 +214,6 @@ pub async fn RouteSocket::request_ack(
 ///|
 /// Mutation send attempts, including kernel refusals and unknown outcomes.
 /// Queries, encoding errors and requests on a closed socket do not increment it.
-pub fn RouteSocket::mutation_attempts(self : RouteSocket) -> Int {
+pub fn RouteSocket::mutation_attempts(self : RouteSocket) -> Int32 {
   self.mutation_count
 }

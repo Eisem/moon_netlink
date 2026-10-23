@@ -2,11 +2,11 @@
 /// Invalid input supplied while building a typed Link query.
 #warnings("-implicit_impl_as_method")
 pub(all) suberror LinkQueryError {
-  InvalidInterfaceIndex(index~ : Int)
+  InvalidInterfaceIndex(index~ : Int32)
   EmptyInterfaceName
   InterfaceNameContainsNul
   InterfaceNameInvalidUtf16
-  InterfaceNameTooLong(encoded_length~ : Int, maximum~ : Int)
+  InterfaceNameTooLong(encoded_length~ : Int32, maximum~ : Int32)
 } derive(Debug, Eq)
 
 ///|

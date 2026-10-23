@@ -57,7 +57,7 @@ async test "live Netlink datagram truncation fails closed" {
   @async.pause()
   let socket = RouteSocket::open(receive_capacity=@core.nlmsg_header_length)
   defer socket.close()
-  let sequence : UInt = 9001
+  let sequence : UInt32 = 9001
   try socket.request_dump(@route.encode_get_links(sequence), sequence) catch {
     DatagramMayBeTruncated(capacity~) =>
       assert_eq(capacity, @core.nlmsg_header_length)
@@ -75,8 +75,8 @@ async test "live Netlink datagram truncation fails closed" {
 async test "live timed-out request leaves route socket reusable" {
   let socket = RouteSocket::open()
   defer socket.close()
-  let sent_sequence : UInt = 9101
-  let expected_sequence : UInt = 9102
+  let sent_sequence : UInt32 = 9101
+  let expected_sequence : UInt32 = 9102
   try
     @async.with_timeout(
       20,
@@ -94,7 +94,7 @@ async test "live timed-out request leaves route socket reusable" {
   } noraise {
     _ => fail("expected mismatched sequence request to time out")
   }
-  let recovery_sequence : UInt = 9103
+  let recovery_sequence : UInt32 = 9103
   let messages = socket.request_dump(
     @route.encode_get_links(recovery_sequence),
     recovery_sequence,

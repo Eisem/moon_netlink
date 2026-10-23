@@ -58,7 +58,7 @@ fn string_json(value : String?) -> Json {
 }
 
 ///|
-fn uint_json(value : UInt?) -> Json {
+fn uint_json(value : UInt32?) -> Json {
   match value {
     Some(number) => @json.to_json(number)
     None => Json::null()
@@ -83,7 +83,7 @@ pub fn route_destination(route : @route.Route) -> String? {
 
 ///|
 /// Absent metric is zero for IPv4, 1024 for IPv6 in the supported unicast subset.
-pub fn route_priority(route : @route.Route) -> UInt {
+pub fn route_priority(route : @route.Route) -> UInt32 {
   route.priority.unwrap_or(
     match route.family {
       Ipv6 => 1024

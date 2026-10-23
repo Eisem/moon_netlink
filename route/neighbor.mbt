@@ -41,14 +41,14 @@ pub extend NeighborState with Eq::{equal, not_equal}
 #warnings("-implicit_impl_as_method")
 pub(all) struct Neighbor {
   family : AddressFamily
-  interface_index : Int
+  interface_index : Int32
   interface_name : String?
   destination : IpAddress?
   link_layer_address : MacAddress?
   state : NeighborState
   flags : Byte
   neighbor_type : Byte
-  probes : UInt?
+  probes : UInt32?
   unknown_attributes : Array[@core.NetlinkAttribute]
 } derive(Debug, Eq)
 
@@ -60,7 +60,7 @@ pub extend Neighbor with Eq::{equal, not_equal}
 
 ///|
 /// Build an all-family `RTM_GETNEIGH` dump request.
-pub fn encode_get_neighbors(sequence : UInt) -> Bytes {
+pub fn encode_get_neighbors(sequence : UInt32) -> Bytes {
   let message_length = 28
   let buffer = FixedArray::make(message_length, b'\x00')
   @core.write_u32_le(buffer, 0, message_length.reinterpret_as_uint())
@@ -105,7 +105,7 @@ pub fn decode_neighbor(
   let attributes = @core.decode_attributes(payload, 12)
   let mut destination : IpAddress? = None
   let mut link_layer_address : MacAddress? = None
-  let mut probes : UInt? = None
+  let mut probes : UInt32? = None
   let unknown : Array[@core.NetlinkAttribute] = []
   for attribute in attributes {
     if attribute.attribute_type == nda_destination {

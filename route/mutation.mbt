@@ -35,7 +35,7 @@ pub extend MutationError with Eq::{equal, not_equal}
 /// One local IPv4/IPv6 address to add or delete on an existing interface.
 #warnings("-implicit_impl_as_method")
 pub(all) struct AddressSpec {
-  interface_index : Int
+  interface_index : Int32
   address : IpAddress
   prefix_length : Byte
   scope : Byte
@@ -49,9 +49,9 @@ pub(all) struct RouteSpec {
   destination : IpAddress
   prefix_length : Byte
   gateway : IpAddress?
-  output_interface : Int
-  table : UInt
-  priority : UInt?
+  output_interface : Int32
+  table : UInt32
+  priority : UInt32?
   protocol : Byte
   scope : Byte
 } derive(Debug, Eq)
@@ -59,12 +59,12 @@ pub(all) struct RouteSpec {
 ///|
 #warnings("-implicit_impl_as_method")
 pub(all) suberror MutationError {
-  InvalidInterfaceIndex(index~ : Int)
-  InvalidMtu(mtu~ : UInt)
-  InvalidPrefix(prefix_length~ : Byte, maximum~ : Int)
+  InvalidInterfaceIndex(index~ : Int32)
+  InvalidMtu(mtu~ : UInt32)
+  InvalidPrefix(prefix_length~ : Byte, maximum~ : Int32)
   NonCanonicalDestination
   GatewayFamilyMismatch
-  InvalidTable(table~ : UInt)
+  InvalidTable(table~ : UInt32)
 } derive(Debug, Eq)
 
 ///|
@@ -85,7 +85,7 @@ fn mutation_attribute(
 }
 
 ///|
-fn u32_payload(value : UInt) -> Bytes {
+fn u32_payload(value : UInt32) -> Bytes {
   let buffer = FixedArray::make(4, b'\x00')
   @core.write_u32_le(buffer, 0, value)
   Bytes::from_array(buffer[:])
@@ -94,7 +94,7 @@ fn u32_payload(value : UInt) -> Bytes {
 ///|
 fn encode_mutation(
   message_type : UInt16,
-  sequence : UInt,
+  sequence : UInt32,
   flags : UInt16,
   body : Bytes,
   attributes : ArrayView[@core.NetlinkAttribute],
@@ -148,9 +148,9 @@ fn validate_prefix(
 ///|
 /// Encode an acknowledged MTU change, preserving all interface flags.
 pub fn encode_set_link_mtu(
-  sequence : UInt,
-  index : Int,
-  mtu : UInt,
+  sequence : UInt32,
+  index : Int32,
+  mtu : UInt32,
 ) -> Bytes raise {
   if index <= 0 {
     raise MutationError::InvalidInterfaceIndex(index~)
@@ -167,7 +167,7 @@ pub fn encode_set_link_mtu(
 
 ///|
 fn encode_address_mutation(
-  sequence : UInt,
+  sequence : UInt32,
   spec : AddressSpec,
   flags : UInt16,
   deleting : Bool,
@@ -200,9 +200,9 @@ fn encode_address_mutation(
 ///|
 /// Add a local address; exclusive creation is the default.
 pub fn encode_add_address(
-  sequence : UInt,
+  sequence : UInt32,
   spec : AddressSpec,
-  mode? : AddMode = Exclusive,
+  mode~ : AddMode = Exclusive,
 ) -> Bytes raise {
   encode_address_mutation(sequence, spec, mutation_flags(mode), false)
 }
@@ -210,7 +210,7 @@ pub fn encode_add_address(
 ///|
 /// Delete precisely the specified local address and prefix.
 pub fn encode_delete_address(
-  sequence : UInt,
+  sequence : UInt32,
   spec : AddressSpec,
 ) -> Bytes raise {
   encode_address_mutation(sequence, spec, 0x0005, true)
@@ -218,7 +218,7 @@ pub fn encode_delete_address(
 
 ///|
 fn encode_route_mutation(
-  sequence : UInt,
+  sequence : UInt32,
   spec : RouteSpec,
   flags : UInt16,
   deleting : Bool,
@@ -285,15 +285,15 @@ fn encode_route_mutation(
 ///|
 /// Add a canonical unicast route; exclusive creation is the default.
 pub fn encode_add_route(
-  sequence : UInt,
+  sequence : UInt32,
   spec : RouteSpec,
-  mode? : AddMode = Exclusive,
+  mode~ : AddMode = Exclusive,
 ) -> Bytes raise {
   encode_route_mutation(sequence, spec, mutation_flags(mode), false)
 }
 
 ///|
 /// Delete a route using destination, table, output interface and metric.
-pub fn encode_delete_route(sequence : UInt, spec : RouteSpec) -> Bytes raise {
+pub fn encode_delete_route(sequence : UInt32, spec : RouteSpec) -> Bytes raise {
   encode_route_mutation(sequence, spec, 0x0005, true)
 }

@@ -1,8 +1,8 @@
 ///|
-pub let nlmsg_header_length : Int = 16
+pub let nlmsg_header_length : Int32 = 16
 
 ///|
-pub let nla_header_length : Int = 4
+pub let nla_header_length : Int32 = 4
 
 ///|
 pub let nla_f_nested : UInt16 = 0x8000
@@ -29,11 +29,11 @@ pub let nlmsg_overrun : UInt16 = 4
 /// The fixed header shared by every Netlink message.
 #warnings("-implicit_impl_as_method")
 pub(all) struct NetlinkHeader {
-  length : UInt
+  length : UInt32
   message_type : UInt16
   flags : UInt16
-  sequence : UInt
-  port_id : UInt
+  sequence : UInt32
+  port_id : UInt32
 } derive(Debug, Eq)
 
 ///|
@@ -75,7 +75,7 @@ pub extend NetlinkAttribute with Eq::{equal, not_equal}
 ///|
 fn decode_header_at(
   data : BytesView,
-  offset : Int,
+  offset : Int32,
 ) -> NetlinkHeader raise CodecError {
   require_range(data, offset, nlmsg_header_length, "netlink header")
   {
@@ -195,7 +195,7 @@ pub fn decode_datagram(
 /// Decode all aligned attributes in a message-specific attribute region.
 pub fn decode_attributes(
   data : BytesView,
-  start : Int,
+  start : Int32,
 ) -> Array[NetlinkAttribute] raise CodecError {
   if start < 0 || start > data.length() {
     raise InvalidOffset(context="attribute region", offset=start)
