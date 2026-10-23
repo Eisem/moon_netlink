@@ -1,21 +1,14 @@
 #!/usr/bin/env bash
-# Official archives are content-pinned: upstream changes fail verification.
+# Verified content-addressed cache also supports installation without network.
 set -euo pipefail
 destination=${1:-"$HOME/.moon"}
-download=$(mktemp -d)
-trap 'rm -rf -- "$download"' EXIT
-curl --retry 3 -fsSL https://cli.moonbitlang.com/binaries/latest/moonbit-linux-x86_64.tar.gz -o "$download/toolchain.tar.gz"
-curl --retry 3 -fsSL https://cli.moonbitlang.com/cores/core-latest.tar.gz -o "$download/core.tar.gz"
-(
-  cd "$download"
-  sha256sum --check <<'SHA'
-e9a52300d137d43d122f26b78d307e08aaaaa644b9fad50ebfd709d7ae927cf6  toolchain.tar.gz
-a83410b3e337edf275176291a4532604997f9180fd5ed7a5ba7cf521ff0898e0  core.tar.gz
-SHA
-)
+script_dir=$(cd "$(dirname "$0")" && pwd)
+cache=${MOONNETLINK_TOOLCHAIN_CACHE:-"$HOME/.cache/moonnetlink-toolchain"}
+archive_list=$(python3 "$script_dir/fetch_toolchain.py" "$cache")
+mapfile -t archives <<< "$archive_list"
 mkdir -p "$destination/lib"
-tar -xzf "$download/toolchain.tar.gz" -C "$destination"
-tar -xzf "$download/core.tar.gz" -C "$destination/lib"
+tar -xzf "${archives[0]}" -C "$destination"
+tar -xzf "${archives[1]}" -C "$destination/lib"
 chmod +x "$destination"/bin/* "$destination/bin/internal/tcc"
 export PATH="$destination/bin:$PATH"
 moon version

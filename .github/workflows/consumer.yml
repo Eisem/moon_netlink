@@ -11,6 +11,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/moonnetlink-toolchain
+          key: moonbit-linux-x64-${{ hashFiles('.ci/toolchain-lock.json') }}
       - run: |
           bash .ci/install-toolchain.sh
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"

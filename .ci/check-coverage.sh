@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 .ci/test_coverage_gate.py
+python3 .ci/test_toolchain_cache.py
 python3 .ci/check_critical_tests.py
 moon coverage clean
 moon test --target native --enable-coverage

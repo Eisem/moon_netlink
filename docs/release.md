@@ -1,5 +1,20 @@
 # Release and downstream validation / 发布与下游验证
 
+The [P0 delivery plan](p0-plan.md) defines coverage and repeatable release checks.
+See [coverage](coverage.md) for the package baselines and critical fault inventory.
+`Release artifacts` builds Linux x86_64 archives on manual dispatch and publishes
+them on matching version tags after validation. Each release includes SHA256SUMS,
+BUILD.txt, RUNTIME.txt and the toolchain lock. Verify checksums before running it.
+
+[P0 交付计划](p0-plan.md)定义覆盖率及可重复发布检查；分包基线及关键故障清单见
+[覆盖率说明](coverage.md)。`Release artifacts` 支持手动构建 Linux x86_64 归档，
+并在匹配版本标签通过验证后发布。发布附带 SHA256SUMS、BUILD.txt、RUNTIME.txt
+和工具链锁；运行前应校验摘要。
+
+```sh
+sha256sum --check SHA256SUMS
+```
+
 `eisem/moonnetlink@0.1.0` is published on Mooncakes. It requires the native backend,
 a C compiler and Linux for live networking. The tested toolchain is MoonBit
 `0.1.20260920`, with `moonbitlang/async@0.22.1`.

@@ -8,6 +8,10 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/moonnetlink-toolchain
+          key: moonbit-linux-x64-${{ hashFiles('.ci/toolchain-lock.json') }}
       - name: Install pinned MoonBit
         run: |
           bash .ci/install-toolchain.sh
@@ -34,6 +38,8 @@ jobs:
           timeout --kill-after=10s 300s bash demo/compare/run.sh
       - name: Audit source package
         run: moon package --list
+      - name: Library coverage regression gate
+        run: timeout --kill-after=10s 300s bash .ci/check-coverage.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -42,4 +48,5 @@ jobs:
             _build/publish/*.zip
             _build/**/*.json
             _build/**/*.log
+            _build/coverage/
           if-no-files-found: ignore

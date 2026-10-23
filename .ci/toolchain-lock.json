@@ -1,0 +1,16 @@
+{
+  "moon": "0.1.20261021",
+  "moonc": "v0.10.17+093cb8f9c",
+  "archives": [
+    {
+      "name": "toolchain",
+      "url": "https://cli.moonbitlang.com/binaries/latest/moonbit-linux-x86_64.tar.gz",
+      "sha256": "e9a52300d137d43d122f26b78d307e08aaaaa644b9fad50ebfd709d7ae927cf6"
+    },
+    {
+      "name": "core",
+      "url": "https://cli.moonbitlang.com/cores/core-latest.tar.gz",
+      "sha256": "a83410b3e337edf275176291a4532604997f9180fd5ed7a5ba7cf521ff0898e0"
+    }
+  ]
+}
