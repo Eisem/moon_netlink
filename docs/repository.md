@@ -27,11 +27,11 @@ The repository keeps the files needed to reproduce the source, public API, tests
 | `MoonBit 黑客松大赛章程/` | 否<br>No | 本地参考资料，不是项目实现或项目发布内容<br>Local contest references, not implementation or release content |
 | `.git/` | 否<br>No | Git 自己维护的历史与本地配置，不作为源码文件提交<br>Git history and local configuration managed by Git, not source files |
 
-`.ci/` 中的脚本目前需要手动运行；它们不是已配置的 GitHub Actions 工作流。
+`.github/workflows/ci.yml` 自动执行构建、测试及隔离验收；独立发布包验证见 `consumer.yml`。
 当前已支持 Snapshot/DesiredState/Diff/Plan、保护 API、dry-run 和确认后的 Apply CLI。
 后续集成验收与发布任务继续推进。公开能力与限制以 README 和相关 API 文档为准。
 
-Scripts in `.ci/` currently run manually; they are not configured GitHub Actions workflows. Snapshot/DesiredState/Diff/Plan, protection APIs, dry-run and confirmed Apply CLI are supported. Further integration acceptance and release tasks remain in progress. README and public API documentation define the supported behavior and limitations.
+`.github/workflows/ci.yml` runs builds, tests and isolated acceptance; `consumer.yml` checks the published package independently. Snapshot/DesiredState/Diff/Plan, protection APIs, dry-run and confirmed Apply CLI are supported. Further integration acceptance and release tasks remain in progress. README and public API documentation define the supported behavior and limitations.
 
 每个小任务完成并验收后独立提交，实现、测试、公开文档和生成接口一同交付。
 任务勾选与内部指导仅更新本地 `TODO.md`，不能把该文件加入任务 commit。

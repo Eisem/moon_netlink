@@ -1,0 +1,47 @@
+name: Native validation
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh -o /tmp/install-moon.sh
+          bash /tmp/install-moon.sh 0.1.20260920
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - run: sudo apt-get update && sudo apt-get install -y build-essential iproute2 python3 util-linux
+      - name: Permit isolated user namespaces on runner
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Check, build, test and review interfaces
+        run: |
+          moon version
+          moon update
+          moon fmt --check
+          moon check --target native --warn-list +73
+          moon build --target native
+          moon test --target native
+          moon info --target native
+          git diff --exit-code -- '*.mbti'
+      - name: Linux kernel acceptance in disposable namespaces
+        run: |
+          for script in .ci/validate-*.sh; do
+            [[ "$script" == .ci/validate-consumer.sh ]] && continue
+            timeout --kill-after=10s 180s bash "$script"
+          done
+          timeout --kill-after=10s 300s bash demo/compare/run.sh
+      - name: Audit source package
+        run: moon package --list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-validation
+          path: |
+            _build/publish/*.zip
+            _build/**/*.json
+            _build/**/*.log
+          if-no-files-found: ignore
+
