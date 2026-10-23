@@ -11,6 +11,22 @@ on:
 permissions:
   contents: read
 jobs:
+  release-binary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      VERSION: ${{ inputs.version || '0.1.1' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Verify and run downloaded release
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          mkdir release
+          gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" --dir release
+          cd release
+          sha256sum --check SHA256SUMS
+          tar -xzf "moonnetlink-$VERSION-linux-x86_64.tar.gz"
+          "./moonnetlink-$VERSION-linux-x86_64/moonnet" link show --json | python3 -c 'import json,sys; assert any(row["name"] == "lo" for row in json.load(sys.stdin))'
   consumer:
     runs-on: ubuntu-24.04
     env:
