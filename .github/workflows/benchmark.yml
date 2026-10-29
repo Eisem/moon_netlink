@@ -19,6 +19,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y build-essential iproute2 python3 util-linux
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: |
+          moon update
           python3 .ci/test_benchmark_queries.py
           timeout --kill-after=10s 180s bash .ci/benchmark-queries.sh
       - uses: actions/upload-artifact@v4
