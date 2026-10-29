@@ -225,3 +225,12 @@ when both sides meet every declared expectation.
 MIT
 
 MIT 许可证。
+
+## Performance baseline / 性能基线
+
+Run the isolated, correctness-checked CLI query comparison described in
+[performance.md](docs/performance.md). It records raw samples and environment
+metadata without assuming a speed advantage.
+
+隔离运行并校验查询结果一致性的 CLI 对照见[性能基线](docs/performance.md)。
+报告保留原始样本与环境信息，不预设速度优势。

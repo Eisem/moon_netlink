@@ -1,0 +1,28 @@
+name: Query performance baseline
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/moonnetlink-toolchain
+          key: moonbit-linux-x64-${{ hashFiles('.ci/toolchain-lock.json') }}
+      - run: |
+          bash .ci/install-toolchain.sh
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - run: sudo apt-get update && sudo apt-get install -y build-essential iproute2 python3 util-linux
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: |
+          python3 .ci/test_benchmark_queries.py
+          timeout --kill-after=10s 180s bash .ci/benchmark-queries.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: query-performance-baseline
+          path: _build/benchmarks/queries.json
+          if-no-files-found: error
